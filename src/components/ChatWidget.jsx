@@ -57,6 +57,11 @@ function Bubble({ m, app, asks }) {
             {go[1]} <Ico name="arrow" />
           </button>
         )}
+        {m.track && (
+          <button className="chat__link" onClick={() => app.openModal(<TrackOrder orderId={m.track} />)}>
+            {app.t("Watch the rider on the map", "Lacak kurir di peta")} <Ico name="arrow" />
+          </button>
+        )}
       </div>
       <time className="chat__at" dateTime={m.at}>{clockTime(m.at)}</time>
     </div>
@@ -161,11 +166,6 @@ export default function ChatWidget() {
             <div className="chat__quick">
               {QUICK.map(([id, q]) => <button key={id} onClick={() => send(q)}>{q}</button>)}
             </div>
-          )}
-          {m.track && (
-            <button className="chat__link" onClick={() => app.openModal(<TrackOrder orderId={m.track} />)}>
-              {app.t("Watch the rider on the map", "Lacak kurir di peta")} <Ico name="arrow" />
-            </button>
           )}
         </div>
 
