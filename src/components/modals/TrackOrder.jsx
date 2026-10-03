@@ -6,7 +6,6 @@ import ReviewForm from "./ReviewForm.jsx";
 import { BIZ, riderFor, routeKm } from "../../data/biz.js";
 import { clamp, clockTime } from "../../lib/format.js";
 
-/* The map is drawn, not fetched: no tiles and no image urls, so tracking still works offline. */
 const ROUTE = [[26, 182], [26, 120], [92, 120], [92, 44], [160, 44], [160, 108], [232, 108], [232, 52], [300, 52]];
 const D = "M" + ROUTE.map(([x, y]) => `${x} ${y}`).join(" L ");
 const START = ROUTE[0];
@@ -21,7 +20,6 @@ const CUM = (() => {
   return { acc, len };
 })();
 
-/* point at a fraction of the route, walked by hand so nothing has to be measured from the DOM */
 function at(frac) {
   const d = CUM.len * clamp(frac, 0, 1);
   for (let i = 1; i < ROUTE.length; i++) {
@@ -52,9 +50,9 @@ const STEPS = [
   ["At your door", "Sampai di depan pintu"]
 ];
 const STAGE = { new: 0, cooking: 1, ready: 2, delivering: 3, done: 4 };
-const PARKED = [54, 176];   /* the scooter waits by the pass until the ticket is actually out */
-const CREEP = .86;          /* a run nobody has signed for never reaches the door */
-const TAU = 6000;           /* ms for the rider to cover most of the remaining way */
+const PARKED = [54, 176];
+const CREEP = .86;
+const TAU = 6000;
 
 const still = () => typeof window !== "undefined" &&
   window.matchMedia?.("(prefers-reduced-motion:reduce)").matches;
@@ -77,7 +75,6 @@ export default function TrackOrder({ orderId }) {
     return () => clearInterval(id);
   }, [out]);
 
-  /* nothing moves on the map until the chef pushes the ticket out, and an unsigned run stops short */
   const elapsed = still() ? Infinity : now - startAt;
   const roll = arrived ? 1 : !out ? 0 : CREEP - (CREEP - .1) * Math.exp(-elapsed / TAU);
   const here = roll > 0 ? at(roll) : PARKED;
@@ -87,7 +84,6 @@ export default function TrackOrder({ orderId }) {
   const minsLeft = arrived ? 0 : out ? Math.max(2, Math.round(eta * (1 - roll))) : eta;
   const door = order?.address || BIZ.street[0];
   const signed = order?.receivedAt;
-  /* the last stretch of an honest run: close enough that the guest can say it arrived */
   const near = out && roll >= .6;
 
   if (!order) return null;
@@ -199,11 +195,10 @@ export default function TrackOrder({ orderId }) {
                     onClick={() => { app.closeModal(); app.openModal(<ReviewForm />); }}>
               {t("Rate this order", "Beri ulasan pesanan ini")}
             </button>
-          ) : near && (
+          ) : near ? (
             <button className="btn btn--primary" onClick={() => app.receiveOrder(orderId)}>
               {t("Order received", "Pesanan sudah diterima")}
-            </button>
-          )}
+            </button>}
         </div>
       </div>
     </>

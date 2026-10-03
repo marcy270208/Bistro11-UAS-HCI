@@ -1,15 +1,12 @@
-/* ═══════════════════════════════════════════════════════════
-   One provider for data + session + UI chrome, so pages and
-   components never prop-drill the basket.
-   ═══════════════════════════════════════════════════════════ */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORIES, MENU, STATUS_FLOW } from "../data/menu.js";
 import { DELIVERY_FEE, FREE_OVER, PICKUP_FEE, PROMOS, SEED_REVIEWS, SERVICE_RATE, STAFF, TAX_RATE } from "../data/biz.js";
 import { answer, opening } from "./assistant.js";
 import { defaults, emptyVault, loadState, saveState, threadKey } from "./storage.js";
-import { CAT_ID, LANGS, LOCALE, TAG_ID, makeT } from "./i18n.js";
 import { supabase } from "./supabase.js";
+import { CAT_ID, LANGS, LOCALE, TAG_ID, makeT } from "./i18n.js";
 import { syncThemeColor } from "./pwa.js";
+import { getHook, pushOrder } from "./sheets.js";
 import { money, r0, setLocale, uid } from "./format.js";
 
 const Ctx = createContext(null);
@@ -19,15 +16,13 @@ export const useApp = () => {
   return v;
 };
 
-/* the assistant is run twice per question, once for each half of a pair */
 const EN_ONLY = en => en;
 const ID_ONLY = (en, id) => id || en;
 
-/* said out loud in the transcript, so the guest knows who is on the line from then on */
 const HANDOFF = {
   chef: [
-    `This one goes to ${STAFF.name}. The assistant has stepped back, so a reply arrives when the chef reads the board.`,
-    `Pesan ini sampai ke ${STAFF.name}. Asistennya mundur, jadi balasannya datang saat chef membaca papan.`
+    `You are now chatting directly with ${STAFF.name}. The assistant has stepped back, so everything you write here is for the chef, and a reply lands when the board is read.`,
+    `Kamu sekarang chat langsung sama ${STAFF.name}. Asistennya mundur, jadi semua yang kamu tulis di sini ditujukan ke chef, dan balasannya datang saat papan dibaca.`
   ],
   bot: [
     `The assistant is back on the line. ${STAFF.name} still reads everything you wrote here.`,
@@ -35,7 +30,6 @@ const HANDOFF = {
   ]
 };
 
-/* prefix-first matching: one letter is enough to surface a dish */
 function matchDish(d, q) {
   if (!q) return { hit: true, exact: true };
   const tags = (d.tags || []).join(" ") + " " + (d.tags || []).map(x => TAG_ID[x] || "").join(" ");
@@ -46,7 +40,6 @@ function matchDish(d, q) {
   return { hit: false, exact: false };
 }
 
-/** Prefix hits win; only when nothing starts with the term do we fall back to contains. */
 function searchDishes(list, query) {
   const q = String(query || "").trim().toLowerCase();
   if (!q) return { list: [...list], exact: true };
@@ -64,7 +57,6 @@ const syncVault = d => {
   v.wish = [...d.wish];
 };
 
-/* the thread this browser is live in: one per account, one shared anonymous one */
 const ensureThread = d => {
   const user = d.session?.kind === "user" ? String(d.session.email) : "";
   const id = threadKey(d.session);
@@ -102,7 +94,6 @@ export function AppProvider({ children }) {
 
   const patchUi = useCallback(p => setUi(u => ({ ...u, ...p })), []);
 
-  /* every mutation gets a private copy, like the old imperative `S` */
   const write = useCallback(fn => setData(prev => { const next = structuredClone(prev); fn(next); next.lastUpdated = Date.now(); return next; }), []);
 
   /* ── toasts ── */
@@ -114,6 +105,7 @@ export function AppProvider({ children }) {
 
   const t = useMemo(() => makeT(data.lang), [data.lang]);
 
+  /* ── persistence + theme ── */
 
   // Sync from Supabase on first load
   useEffect(() => {
@@ -130,7 +122,6 @@ export function AppProvider({ children }) {
     });
   }, []);
 
-  /* ── persistence + theme ── */
   useEffect(() => {
     if (!saveState(data)) {
       toast(t("Storage is full. Remove your profile photo to keep saving.",
@@ -380,6 +371,33 @@ export function AppProvider({ children }) {
     return { sub, tax, service, delivery, discount, promo, total: Math.max(0, r0(sub + tax + service + delivery - discount)) };
   }, [cartList]);
 
+  const sheetBusy = useRef(new Set());
+  const sendToSheet = useCallback(orders => {
+    const url = getHook();
+    if (!url) return Promise.resolve(0);
+    const queue = orders.filter(o => !o.synced && !sheetBusy.current.has(o.id));
+    if (!queue.length) return Promise.resolve(0);
+    queue.forEach(o => sheetBusy.current.add(o.id));
+    let sent = 0;
+    return queue.reduce((chain, o) => chain
+      .then(() => pushOrder(o, t, data.menu))
+      .then(() => {
+        sent += 1;
+        write(d => { const x = d.orders.find(y => y.id === o.id); if (x) x.synced = true; });
+      })
+      .catch(() => {})
+      .then(() => { sheetBusy.current.delete(o.id); }), Promise.resolve()).then(() => sent);
+  }, [t, data.menu, write]);
+
+  const sheetSwept = useRef(false);
+  useEffect(() => {
+    if (sheetSwept.current) return undefined;
+    sheetSwept.current = true;
+    const waiting = getHook() ? data.orders.filter(o => !o.synced) : [];
+    if (waiting.length) sendToSheet(waiting);
+    return undefined;
+  }, [data.orders, sendToSheet]);
+
   const placeOrder = useCallback(order => {
     write(d => {
       d.orders.unshift(order);
@@ -393,9 +411,8 @@ export function AppProvider({ children }) {
       syncVault(d);
     });
     setTracker(order);
-    const payload = { orders: [{ id: order.created ? new Date(order.created).toLocaleString() : "-", date: order.id, name: order.name || "Guest", type: order.type, status: order.type === "table" ? order.table : (order.address || "-"), total: order.items.map(i => `${i.qty}x ${i.name}`).join("; "), items: order.notes || "-", notes: order.totals?.total || 0 }] };
-    fetch("https://script.google.com/macros/s/AKfycbxUGAViaisAmmwHqZV4JKeW0wqCE4_BUhqUoGA6CNGdr47wEMQKD46HrJjR8mzktyqjdw/exec", { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) }).catch(() => {});
-  }, [write]);
+    sendToSheet([order]);
+  }, [write, sendToSheet]);
 
   const advanceOrder = useCallback(id => {
     write(d => {
@@ -407,7 +424,7 @@ export function AppProvider({ children }) {
     if (o) toast(t(`${o.id} moved on`, `${o.id} sudah maju`), "🔔");
   }, [write, data.orders, toast, t]);
 
-  
+
   // Global Demo Simulation
   useEffect(() => {
     const activeOrders = data.orders.filter(o => o.status !== "done" && o.status !== "cancelled");
@@ -420,12 +437,6 @@ export function AppProvider({ children }) {
     return () => timeouts.forEach(clearTimeout);
   }, [data.orders, advanceOrder]);
 
-  const printOrder = useCallback(id => {
-    write(d => { const o = d.orders.find(x => x.id === id); if (o) o.printed = true; });
-    toast(t("Sent to the printer at the pass", "Tiketnya sudah keluar di printer dapur"), "🖨️");
-  }, [write, toast, t]);
-
-  /* the guest signs for the run; the chef's board sees the same ticket go served */
   const receiveOrder = useCallback(id => {
     write(d => {
       const o = d.orders.find(x => x.id === id);
@@ -464,8 +475,6 @@ export function AppProvider({ children }) {
     th.updated = now;
   }), [write]);
 
-  /* the assistant is asked twice, once per language, so a transcript that is
-     already on disk keeps following the picker instead of freezing in one tongue */
   const openChat = useCallback(() => {
     setUi(u => ({ ...u, chat: true, chatOut: false }));
     write(d => {
@@ -492,7 +501,6 @@ export function AppProvider({ children }) {
     const msg = String(text || "").trim();
     if (!msg) return;
     pushChat(chatId, { from: "guest", text: msg, text_id: String(textId || "").trim() }, "chef");
-    /* a guest who asked for the chef does not get a machine talking over them */
     if (chatMode === "chef") return;
     setUi(u => ({ ...u, chatTyping: true }));
     clearTimeout(timers.current.chat);
@@ -661,7 +669,6 @@ export function AppProvider({ children }) {
     });
   }, []);
 
-  /* a home-screen shortcut (#menu / #chat / #basket) opens its surface, once */
   const deepLinked = useRef(false);
   useEffect(() => {
     if (deepLinked.current || ui.view !== "guest") return;
@@ -673,7 +680,6 @@ export function AppProvider({ children }) {
     else if (document.getElementById(to)) goSection(to);
   }, [ui.view, openChat, openBasket, goSection]);
 
-  /* keyboard: Esc closes, "/" opens search */
   useEffect(() => {
     const onKey = e => {
       const typing = /input|textarea|select/i.test(document.activeElement?.tagName || "");
@@ -701,7 +707,7 @@ export function AppProvider({ children }) {
     toast, openModal, closeModal, openDrawer, closeDrawer, setTracker,
     showAuth, leaveAuth, asCustomer, beginSession, endSession, createAccount, updateMe, setTheme,
     setQty, toggleWish, clearWish, showSavedOnly, resetFilters,
-    placeOrder, advanceOrder, printOrder, receiveOrder,
+    placeOrder, advanceOrder, receiveOrder, sendToSheet,
     addReview, toggleReview, deleteReview,
     chatId, chatThread, chatMode, openChat, closeChat, askChat, setChatMode, chefReply, readChat, clearChat, removeChat,
     addDish, patchDish, toggleDish, removeDish, resetDemo,

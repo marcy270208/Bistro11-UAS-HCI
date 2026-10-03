@@ -1,23 +1,19 @@
 import { supabase } from "./supabase.js";
-/* localStorage persistence + the seeded default state. */
 import { MENU, LOCAL_BY_ID } from "../data/menu.js";
 import { SEED_ACCOUNTS, SEED_REVIEWS, REVIEW_SEED_BY_ID } from "../data/biz.js";
 import { SEED_CHATS, CHAT_SEED_BY_ID, VISITOR_THREAD } from "../data/knowledge.js";
 
 export const KEY = "bistro-eleven.v3";
-export const SEED_VER = 2;
 
-/* a guest's chat belongs to their account; everyone else shares the anonymous thread */
 export const threadKey = session =>
   (session?.kind === "user" ? `c-${String(session.email).toLowerCase()}` : VISITOR_THREAD);
 
 export const emptyVault = () => ({ cart: {}, wish: [] });
 
 export const defaults = () => ({
-  seedVer: SEED_VER,
   lang: "en",
   theme: matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light",
-  session: null, /* { kind: "user" | "staff", email } */
+  session: null,
   accounts: structuredClone(SEED_ACCOUNTS),
   vault: { [SEED_ACCOUNTS[0].email.toLowerCase()]: { cart: {}, wish: ["m1", "b2"] } },
   cart: {},
@@ -28,31 +24,27 @@ export const defaults = () => ({
   menu: structuredClone(MENU)
 });
 
+const board = (saved, seed) => (Array.isArray(saved) && saved.length ? saved : structuredClone(seed));
+
 export function loadState() {
   const d = defaults();
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem(KEY)) || null; } catch { saved = null; }
   if (!saved) return d;
-  if (saved.seedVer !== SEED_VER) {
-    saved.menu = d.menu;
-    saved.reviews = d.reviews;
-    saved.orders = [];   /* stored totals belong to the old currency */
-    saved.seedVer = SEED_VER;
-  }
   const merged = {
     ...d, ...saved,
-    accounts: Array.isArray(saved.accounts) && saved.accounts.length ? saved.accounts : d.accounts,
-    chats: Array.isArray(saved.chats) ? saved.chats : d.chats,
+    accounts: board(saved.accounts, SEED_ACCOUNTS),
+    menu: board(saved.menu, MENU),
+    reviews: board(saved.reviews, SEED_REVIEWS),
+    chats: board(saved.chats, SEED_CHATS),
+    orders: Array.isArray(saved.orders) ? saved.orders : [],
     vault: { ...d.vault, ...(saved.vault || {}) }
   };
-  /* a session pointing at a deleted account can't be honoured */
   if (merged.session && merged.session.kind === "user" &&
       !merged.accounts.some(a => a.email.toLowerCase() === merged.session.email.toLowerCase()))
     merged.session = null;
-  /* boards saved before the seed fix still call the yoghurt soup vegan */
   const soup = merged.menu.find(d => d.id === "s4");
   if (soup) soup.tags = (soup.tags || []).filter(t => t !== "vegan");
-  /* chats used to be one shared board, so a signed-in guest's history sat in the visitor thread */
   const shared = merged.chats.find(c => c.id === VISITOR_THREAD && c.email);
   if (shared) {
     const own = threadKey({ kind: "user", email: shared.email });
@@ -63,13 +55,10 @@ export function loadState() {
         || shared.name || "Guest";
     }
   }
-  /* Indonesian copy shipped after most boards were already saved */
   localise(merged);
   return merged;
 }
 
-/* a stored record still wearing its seed wording gets the pair it was saved without;
-   anything the chef rewrote keeps only its own language and falls back to English */
 function localise(d) {
   (d.menu || []).forEach(item => {
     const s = LOCAL_BY_ID[item.id];
