@@ -18,9 +18,6 @@ export default function MenuSection() {
             <span className="eyebrow reveal" data-reveal><i className="eyebrow__dot" /> {t(lang, "menu.board")}</span>
             <h2 className="reveal" data-reveal>{t(lang, "menu.title")}</h2>
           </div>
-          <p className="sec-head__note reveal" data-reveal>
-            {t(lang, "menu.note")}
-          </p>
         </header>
 
         <div className="toolbar reveal" data-reveal>
