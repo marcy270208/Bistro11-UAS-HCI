@@ -15,7 +15,7 @@ import GuestPage from "./pages/GuestPage.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
 
 export default function App() {
-  const { ui } = useApp();
+  const { ui, signedIn } = useApp();
   return (
     <>
       <Header />
@@ -30,7 +30,7 @@ export default function App() {
       <ModalRoot />
       <OrderTracker />
       <PreviewBar />
-      {app.signedIn && <ChatWidget />}
+      {signedIn && <ChatWidget />}
       <MobileNav />
       <InstallBar />
       <Toasts />
