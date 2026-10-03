@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useApp, searchDishes } from "../lib/store.jsx";
 import useReveal from "../hooks/useReveal.js";
 import { STAFF } from "../data/biz.js";
