@@ -120,8 +120,9 @@ export default function AdminPage() {
             <h2>{t(lang, "admin.board")}</h2>
           </div>
           <div className="admin__head-actions">
-            <span className="live"><i /> live <small>· {STAFF.name}</small></span>
-            <button className="btn btn--ghost btn--sm" onClick={app.previewSite}><Ico name="eye" /> View the guest site</button>
+              <span className="live"><i /> live <small>· {STAFF.name}</small></span>
+              <button className="btn btn--ghost btn--sm" onClick={exportOrders} disabled={isSyncing} style={{ border: '1px solid #d2924a', color: '#d2924a' }}>{isSyncing ? "Syncing..." : "Sync to Sheets"}</button>
+              <button className="btn btn--ghost btn--sm" onClick={app.previewSite}><Ico name="eye" /> View the guest site</button>
             <button className="btn btn--ghost btn--sm" onClick={app.resetDemo}>Reset demo data</button>
             <button className="btn btn--ghost btn--sm" onClick={() => app.endSession()}>Sign out</button>
           </div>
