@@ -73,7 +73,6 @@ export default function ChatWidget() {
 
   const shown = ui.chat || ui.chatOut;
   const unread = app.chatThread?.unread?.guest || 0;
-  if (!app.data.session) return null;
 
   useEffect(() => {
     if (!ui.chat) return;
@@ -88,6 +87,7 @@ export default function ChatWidget() {
   }, [ui.chat]);
 
   if (ui.view !== "guest") return null;
+  if (!app.data.session) return null;
 
   const send = text => {
     const v = String(text || "").trim();
