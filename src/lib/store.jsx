@@ -396,6 +396,14 @@ export function AppProvider({ children }) {
       if (!o) return;
       o.status = STATUS_FLOW[Math.min(STATUS_FLOW.indexOf(o.status) + 1, STATUS_FLOW.length - 1)];
     });
+    // Removed toast because it would be annoying if it auto-advances
+  }, [write]);
+
+  const setOrderStatus = useCallback((id, status) => {
+    write(d => {
+      const o = d.orders.find(x => x.id === id);
+      if (o) o.status = status;
+    });
   }, [write]);
 
   // Global Demo Simulation: automatically advance active orders
