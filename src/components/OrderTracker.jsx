@@ -3,128 +3,41 @@ import { useApp } from "../lib/store.jsx";
 import { money, plural } from "../lib/format.js";
 import Bill from "./modals/Bill.jsx";
 
-const CIRC = 2 * Math.PI * 52;
+const TYPE_LABEL = { delivery: ["Delivery", "Antar"], pickup: ["Pickup", "Ambil sendiri"], table: ["Table", "Meja"] };
+const MAX_LINES = 5;
 
-/* stage labels + copy ported verbatim from the vanilla runTracker() */
-const stepsFor = order => ({
-  delivery: ["Ticket on the pass", "In the kitchen", "Plating & boxing", "Rider on the way"],
-  pickup: ["Ticket on the pass", "In the kitchen", "Plating & boxing", "Waiting at the counter"],
-  table: ["Ticket on the pass", "In the kitchen", "Plating at the pass", "Being set at table " + (order.table || "-")]
-}[order.type] || []);
-
-const titlesFor = order => [
-  ["Sending your ticket to the pass…", "The kitchen printer just woke up."],
-  ["Fire!", "Your dishes are on the burners now."],
-  ["Plating and boxing", "Sauce goes in last so nothing sails."],
-  [order.type === "delivery" ? "The rider just left" : order.type === "pickup" ? "Ready at the counter" : "On its way to your table",
-    `Estimated ${order.eta} minutes from the first ticket.`]
+/* the card only claims what really happened: the ticket is printed and handed to the chef */
+const beatsFor = order => [
+  [["Sending your ticket to the pass…", "Tiketmu sedang dikirim ke dapur…"]],
+  [["Printed and on the board", "Sudah tercetak, sudah di papan"],
+   ["The kitchen works its tickets top down.", "Dapur mengerjakan tiket dari yang paling atas."]],
+  [["Now the kitchen takes over", "Sekarang dapur yang ambil alih"],
+   ["Your receipt is ready.", "Struknya sudah siap."]]
 ];
 
-const PER = 1750;   /* ms between stage ticks, first tick after 700ms */
+const FEED = 1250;   /* ms the paper needs to clear the slot, so the copy can say it did */
 
-const DeliveryMap = ({ step }) => {
-  const progress = step < 0 ? 0 : (step + 1) / 4;
-  const total = 313.5;
-  const dist = progress * total;
-  let rx = 47, ry = 185;
-  if (dist <= 70) {
-    ry = 185 - dist;
-  } else if (dist <= 93.5) {
-    const p = (dist - 70) / 23.5;
-    rx = 47 + p * 15;
-    ry = 115 - p * 15;
-  } else if (dist <= 146.5) {
-    rx = 62 + (dist - 93.5);
-    ry = 100;
-  } else if (dist <= 170) {
-    const p = (dist - 146.5) / 23.5;
-    rx = 115 + p * 15;
-    ry = 100 - p * 15;
-  } else if (dist <= 200) {
-    rx = 130;
-    ry = 85 - (dist - 170);
-  } else if (dist <= 223.5) {
-    const p = (dist - 200) / 23.5;
-    rx = 130 + p * 15;
-    ry = 55 - p * 15;
-  } else {
-    rx = 145 + (dist - 223.5);
-    ry = 40;
-  }
-  if (rx > 235) rx = 235;
-  
-  return (
-    <div style={{ position: 'relative', width: '100%', height: '260px', background: '#1c1a19', borderRadius: '24px 24px 0 0', overflow: 'hidden' }}>
-      <svg width="100%" height="100%" viewBox="0 0 300 240" preserveAspectRatio="xMidYMid slice">
-         <g fill="#282421" stroke="#36312d" strokeWidth="2" rx="12">
-           <rect x="25" y="25" width="45" height="45" />
-           <rect x="85" y="25" width="45" height="45" />
-           <rect x="145" y="25" width="45" height="45" />
-           <rect x="205" y="25" width="70" height="45" />
-
-           <rect x="25" y="85" width="45" height="45" />
-           <rect x="85" y="85" width="45" height="45" />
-           <rect x="145" y="85" width="45" height="45" />
-           <rect x="205" y="85" width="70" height="45" />
-
-           <rect x="25" y="145" width="45" height="55" />
-           <rect x="85" y="145" width="45" height="55" />
-           <rect x="145" y="145" width="45" height="55" />
-           <rect x="205" y="145" width="70" height="55" fill="#202c25" />
-         </g>
-
-         <path d="M 47 185 L 47 115 Q 47 100 62 100 L 115 100 Q 130 100 130 85 L 130 55 Q 130 40 145 40 L 235 40" fill="none" stroke="#443c36" strokeWidth="6" strokeLinecap="round" strokeDasharray="0 14" />
-         
-         <path d="M 47 185 L 47 115 Q 47 100 62 100 L 115 100 Q 130 100 130 85 L 130 55 Q 130 40 145 40 L 235 40" fill="none" stroke="#d2924a" strokeWidth="6" strokeLinecap="round" strokeDasharray="350" strokeDashoffset={350 - (progress * 350)} style={{ transition: 'stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1)' }} />
-      </svg>
-
-      <div style={{ position: 'absolute', left: `${(47/300)*100}%`, top: `${(185/240)*100}%`, transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ background: '#5b4c73', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 4px rgba(91,76,115,0.3)' }}>
-           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
-        </div>
-        <div style={{ fontSize: '11px', fontWeight: '800', color: '#fff', marginTop: '6px', letterSpacing: '0.5px' }}>Bistro</div>
-      </div>
-
-      <div style={{ position: 'absolute', left: `${(235/300)*100}%`, top: `${(40/240)*100}%`, transform: 'translate(-50%, -50%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <div style={{ fontSize: '11px', fontWeight: '800', color: '#fff', marginBottom: '6px', letterSpacing: '0.5px' }}>You</div>
-        <div style={{ background: '#394d3f', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 4px rgba(57,77,63,0.3)' }}>
-           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        </div>
-      </div>
-
-      {step >= 0 && (
-        <div style={{ position: 'absolute', left: `${(rx/300)*100}%`, top: `${(ry/240)*100}%`, transform: 'translate(-50%, -50%)', transition: 'left 0.8s cubic-bezier(0.4, 0, 0.2, 1), top 0.8s cubic-bezier(0.4, 0, 0.2, 1)', zIndex: 10 }}>
-          <div style={{ background: '#a54456', width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 5px rgba(165,68,86,0.3)' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/><path d="M14 17H7"/><path d="M4 17H3"/><path d="M17 14h2.5c.83 0 1.5-.67 1.5-1.5V11l-3-4H10l-2 3H3v4h1"/></svg>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 export default function OrderTracker() {
   const app = useApp();
+  const { t } = app;
   const order = app.tracker;
-  const [step, setStep] = useState(-1);       /* -1 = ticket sent, no stage ticked yet */
-  const [doneAll, setDoneAll] = useState(false);
+  const [beat, setBeat] = useState(0);
   const [out, setOut] = useState(false);
   const timers = useRef([]);
 
   useEffect(() => {
-    setStep(-1); setDoneAll(false); setOut(false);
+    setBeat(0); setOut(false);
     if (!order) return undefined;
 
-    const n = stepsFor(order).length || 1;
-
     const push = (fn, ms) => timers.current.push(setTimeout(fn, ms));
-    for (let i = 0; i < n; i++) push(() => setStep(i), 700 + i * PER);
-    const tEnd = 700 + (n - 1) * PER;
-    push(() => setDoneAll(true), tEnd + 900);
-    push(() => setOut(true), tEnd + 900 + 700);
+    push(() => setBeat(1), FEED);
+    push(() => setBeat(2), FEED + 900);
+    const tEnd = FEED + 900;
+    push(() => setOut(true), tEnd + 700);
     push(() => {
       app.setTracker(null);
       app.openModal(<Bill order={order} />, "modal--slim");
-    }, tEnd + 900 + 700 + 460);
+    }, tEnd + 700 + 700);
 
     return () => { timers.current.forEach(clearTimeout); timers.current = []; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -132,99 +45,42 @@ export default function OrderTracker() {
 
   if (!order) return null;
 
-  const steps = stepsFor(order);
-  const len = steps.length || 1;
-  const frac = step < 0 ? 0 : (step + 1) / len;
-  const pct = Math.round(frac * 100);
-  const offset = CIRC * (1 - frac);
-  const pair = step < 0
-    ? ["Sending your ticket to the pass…",
-       `Order ${order.id} · ${plural(order.items.reduce((q, i) => q + i.qty, 0), "item")} · ${money(order.totals.total)}`]
-    : titlesFor(order)[Math.min(step, 3)];
+  const beats = beatsFor(order);
+  const itemCount = order.items.reduce((q, i) => q + i.qty, 0);
+  const pair = beats[Math.min(beat, beats.length - 1)];
+  const sub = beat === 0
+    ? [`${order.id} · ${plural(itemCount, "item")} · ${money(order.totals.total)}`,
+       `${order.id} · ${itemCount} barang · ${money(order.totals.total)}`]
+    : pair[1];
+  const shown = order.items.slice(0, MAX_LINES);
+  const rest = order.items.length - shown.length;
+  const type = TYPE_LABEL[order.type];
 
   return (
     <div className={`tracker${out ? " is-out" : ""}`} id="tracker">
-      <div className="tracker__card" style={order.type === 'delivery' ? { padding: 0, overflow: 'hidden', background: '#171514', maxWidth: '380px', width: '100%', margin: '0 auto', border: '1px solid #332e2a' } : {}}>
-        {order.type === 'delivery' ? (
-          <>
-            <DeliveryMap step={step} />
-            <div style={{ padding: '1.5rem', background: '#1c1a19' }}>
-              <div style={{ display: 'flex', gap: '1.2rem', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <div style={{ border: '1px solid #4a3d31', borderRadius: '16px', padding: '1rem 0.5rem', textAlign: 'center', minWidth: '80px', background: 'rgba(210,146,74,0.05)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <b style={{ color: '#d2924a', fontSize: '1.8rem', lineHeight: 1 }}>{Math.max(0, 15 - (step+1) * 3)}</b>
-                  <span style={{ color: '#998d82', fontSize: '0.65rem', fontWeight: '800', letterSpacing: '1px' }}>MIN LEFT</span>
-                </div>
-                <div>
-                  <h3 style={{ margin: '0 0 0.4rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: '600' }}>
-                    {step >= 3 ? "Rider on the way" : step >= 0 ? steps[step] : "Preparing order"}
-                  </h3>
-                  <p style={{ margin: 0, color: '#998d82', fontSize: '0.9rem' }}>0.4 km to your door · harkit</p>
-                </div>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                {["Ticket on the pass", "In the kitchen", "Packed and sealed", "Rider on the way", "At your door"].map((s, i) => {
-                  const done = step > i || doneAll;
-                  const active = !doneAll && step === i;
-                  return (
-                    <div key={i} style={{ 
-                      display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 1.2rem', 
-                      background: active ? '#282421' : '#1f1c1a', 
-                      borderRadius: '16px', 
-                      border: active ? '1px solid #d2924a' : '1px solid transparent', 
-                      opacity: (!done && !active) ? 0.3 : 1, 
-                      transition: '0.4s ease' 
-                    }}>
-                      <div style={{ 
-                        width: '26px', height: '26px', borderRadius: '50%', 
-                        background: done ? '#5d9c74' : (active ? '#d2924a' : '#333'), 
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        {done ? (
-                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
-                        ) : (active && i === 3 ? (
-                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/><path d="M14 17H7"/><path d="M4 17H3"/><path d="M17 14h2.5c.83 0 1.5-.67 1.5-1.5V11l-3-4H10l-2 3H3v4h1"/></svg>
-                        ) : (
-                           <span style={{ color: '#fff', fontSize: '11px', fontWeight: 'bold' }}>{i+1}</span>
-                        ))}
-                      </div>
-                      <span style={{ color: '#fff', fontWeight: active ? '600' : 'normal', fontSize: '1rem' }}>{s}</span>
-                    </div>
-                  );
-                })}
-              </div>
+      <div className="tracker__card">
+        <div className="tracker__pass">
+          <span className="tracker__slot" />
+          <div className="tracker__paper">
+            <div className="tracker__head">
+              <b>{order.id}</b>
+              <small>{type ? t(...type) : order.type} · {order.slot} · ~{order.eta} {t("min", "mnt")}</small>
             </div>
-          </>
-        ) : (
-          <>
-            <div className="tracker__pan">
-              <span className="steam s1" /><span className="steam s2" /><span className="steam s3" />
-              <div className="pan">🍳</div>
-              <div className="tracker__ring">
-                <svg viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r="52" className="ring-bg" />
-                  <circle cx="60" cy="60" r="52" className="ring-fg"
-                          style={{ strokeDasharray: CIRC, strokeDashoffset: offset }} />
-                </svg>
-                <b id="ring-pct">{pct}%</b>
-              </div>
-            </div>
-            <h3 id="tracker-title">{pair[0]}</h3>
-            <p id="tracker-sub">{pair[1]}</p>
-            <ol className="tracker__steps" id="tracker-steps">
-              {steps.map((s, i) => {
-                const done = doneAll || i < step;
-                const active = !doneAll && i === step;
-                return (
-                  <li key={i} data-i={i} className={`${done ? "is-done" : ""} ${active ? "is-active" : ""}`.trim()}>
-                    <i>{done ? "✓" : i + 1}</i>{s}
-                  </li>
-                );
-              })}
-            </ol>
-          </>
-        )}
+            <ul className="tracker__lines">
+              {shown.map(i => (
+                <li key={i.id}>
+                  <span>{i.qty}× {t(i.name, app.data.menu.find(m => m.id === i.id)?.name_id)}</span>
+                  <b>{money(i.price * i.qty)}</b>
+                </li>
+              ))}
+              {rest > 0 && <li className="more">{t(`+${rest} more ${plural(rest, "line")}`, `+${rest} baris lagi`)}</li>}
+            </ul>
+            {order.notes && <p className="tracker__note">“{order.notes}”</p>}
+            <span className="tracker__tear" />
+          </div>
+        </div>
+        <h3 id="tracker-title" key={`t${beat}`}>{t(...pair[0])}</h3>
+        <p id="tracker-sub" key={`s${beat}`}>{t(...sub)}</p>
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { money, clockTime } from "../lib/format.js";
 import Ico from "../lib/icons.jsx";
 import Photo from "./Photo.jsx";
 import DishDetail from "./modals/DishDetail.jsx";
+import TrackOrder from "./modals/TrackOrder.jsx";
 
 /* topics that advertise themselves as a starter question - emoji stripped off the chip */
 const QUICK = TOPICS.filter(t => t.chip)
@@ -160,6 +161,11 @@ export default function ChatWidget() {
             <div className="chat__quick">
               {QUICK.map(([id, q]) => <button key={id} onClick={() => send(q)}>{q}</button>)}
             </div>
+          )}
+          {m.track && (
+            <button className="chat__link" onClick={() => app.openModal(<TrackOrder orderId={m.track} />)}>
+              {app.t("Watch the rider on the map", "Lacak kurir di peta")} <Ico name="arrow" />
+            </button>
           )}
         </div>
 

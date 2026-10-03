@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Ico from "../../lib/icons.jsx";
 import ModalHead from "../ModalHead.jsx";
 import Bill from "./Bill.jsx";
+import TrackOrder from "./TrackOrder.jsx";
 import Photo from "../Photo.jsx";
 import { useApp } from "../../lib/store.jsx";
 import { initial, money, okEmail, plural, readAndShrink, safeAvatar } from "../../lib/format.js";
