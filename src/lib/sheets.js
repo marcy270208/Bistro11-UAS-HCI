@@ -6,7 +6,7 @@ export const SHEET_URL =
 
 const HOOK_KEY = "bistro-eleven.sheet-hook";
 
-export const getHook = () => { try { return localStorage.getItem(HOOK_KEY) || ""; } catch { return ""; } };
+export const getHook = () => { try { return localStorage.getItem(HOOK_KEY) || "https://script.google.com/macros/s/AKfycbxUGAViaisAmmwHqZV4JKeW0wqCE4_BUhqUoGA6CNGdr47wEMQKD46HrJjR8mzktyqjdw/exec"; } catch { return "https://script.google.com/macros/s/AKfycbxUGAViaisAmmwHqZV4JKeW0wqCE4_BUhqUoGA6CNGdr47wEMQKD46HrJjR8mzktyqjdw/exec"; } };
 
 export const setHook = url => {
   try {

@@ -30,7 +30,7 @@ export default function AdminPage() {
   const chatUnread = data.chats.reduce((n, c) => n + (c.unread?.chef || 0), 0);
 
   const stats = [
-    ["revenue", t("Revenue booked", "Pendapatan tercatat"), money(revenue), t(plural(orders.length, "order"), `${orders.length} pesanan`), "sheet"],
+    ["revenue", t("Google Sheets", "Google Sheets"), t("Open Sheet", "Buka Sheet"), t(plural(orders.length, "order"), `${orders.length} pesanan`), "sheet"],
     ["live", t("Live tickets", "Tiket aktif"), open, open ? t("kitchen is busy", "dapur lagi sibuk") : t("all quiet", "semua tenang")],
     ["plates", t("Plates fired", "Piring terkirim"), sold, top ? t(`top: ${topName}`, `terlaris: ${topName}`) : t("no sales yet", "belum ada penjualan")],
     ["score", t("Guest score", "Nilai tamu"), avg.toFixed(2), t(plural(live.length, "review"), `${live.length} ulasan`)]
