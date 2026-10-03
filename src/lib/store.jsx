@@ -108,7 +108,7 @@ export function AppProvider({ children }) {
   const t = useCallback((key, fallback) => i18n_t(ui.lang, key, fallback), [ui.lang]);
 
   /* every mutation gets a private copy, like the old imperative `S` */
-  const write = useCallback(fn => setData(prev => { const next = structuredClone(prev); fn(next); return next; }), []);
+  const write = useCallback(fn => setData(prev => { const next = structuredClone(prev); fn(next); next.lastUpdated = Date.now(); return next; }), []);
 
   /* ── toasts ── */
   const toast = useCallback((msg, icon = "✅") => {
