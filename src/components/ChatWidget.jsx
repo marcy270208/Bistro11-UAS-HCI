@@ -73,6 +73,7 @@ export default function ChatWidget() {
 
   const shown = ui.chat || ui.chatOut;
   const unread = app.chatThread?.unread?.guest || 0;
+  if (!app.data.session) return null;
 
   useEffect(() => {
     if (!ui.chat) return;
