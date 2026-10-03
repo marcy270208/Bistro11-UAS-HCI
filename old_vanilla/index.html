@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bistro Eleven — Seasonal Plates &amp; Slow Evenings</title>
+<meta name="description" content="Bistro Eleven: a warm neighbourhood kitchen serving wood-fired mains, fresh bakery and small-batch drinks.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍽️</text></svg>">
+</head>
+<body>
+
+<!-- ══════════════════════════ HEADER ══════════════════════════ -->
+<header class="hdr" id="hdr">
+  <a class="brand" href="#top" data-nav="top">
+    <span class="brand__mark">XI</span>
+    <span class="brand__text">
+      <strong>Bistro Eleven</strong>
+      <em>Est. 2015 · Neighbourhood Kitchen</em>
+    </span>
+  </a>
+
+  <nav class="hdr__nav" id="hdr-nav">
+    <a href="#menu" data-nav="menu">Menu</a>
+    <a href="#story" data-nav="story">Our Story</a>
+    <a href="#gallery" data-nav="gallery">Gallery</a>
+    <a href="#reviews" data-nav="reviews">Reviews</a>
+    <a href="#visit" data-nav="visit">Visit</a>
+  </nav>
+
+  <div class="hdr__actions">
+    <button class="icon-btn" id="btn-search" title="Search dishes" aria-label="Search dishes">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+    </button>
+
+    <button class="icon-btn" id="btn-theme" title="Toggle light / dark" aria-label="Toggle theme">
+      <svg class="ico-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg>
+      <svg class="ico-moon" viewBox="0 0 24 24"><path d="M20.5 14.3A8.6 8.6 0 1 1 9.7 3.5a6.9 6.9 0 0 0 10.8 10.8z"/></svg>
+    </button>
+
+    <button class="icon-btn" id="btn-wish" title="Wishlist" aria-label="Wishlist">
+      <svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.6-7.6-9.7A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.6 3c0 5.1-7.6 9.7-7.6 9.7z"/></svg>
+      <span class="pip" id="wish-pip" hidden>0</span>
+    </button>
+
+    <button class="icon-btn icon-btn--cart" id="btn-cart" title="Open cart" aria-label="Open cart">
+      <svg viewBox="0 0 24 24"><path d="M6 6h15l-1.8 8.4H7.6L6 6z"/><path d="M6 6L5.2 3H2.5"/><circle cx="9.2" cy="19.4" r="1.5"/><circle cx="17.6" cy="19.4" r="1.5"/></svg>
+      <span class="pip" id="cart-pip" hidden>0</span>
+    </button>
+
+    <button class="account-btn" id="btn-account" title="Account settings" hidden>
+      <span class="avatar avatar--sm" id="hdr-avatar">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c1.3-3.7 4-5.5 7-5.5s5.7 1.8 7 5.5"/></svg>
+      </span>
+      <span class="account-btn__name" id="hdr-name">Guest</span>
+      <span class="account-btn__tag" id="hdr-role" hidden>Staff</span>
+    </button>
+
+    <button class="btn btn--primary btn--sm" id="btn-login">
+      <svg viewBox="0 0 24 24"><path d="M14 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2"/><path d="M10 12h11M18 9l3 3-3 3"/></svg>
+      <span id="btn-login-label">Sign in</span>
+    </button>
+  </div>
+</header>
+
+<!-- ══════════════════════════ SEARCH SHEET ══════════════════════════ -->
+<div class="search-sheet" id="search-sheet" hidden>
+  <div class="search-sheet__inner">
+    <svg class="search-sheet__ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/></svg>
+    <input type="text" id="search-input" placeholder="Search the menu — try “p” for Penne, Pesto, Pan-Seared…" autocomplete="off" spellcheck="false">
+    <kbd>Esc</kbd>
+    <button class="text-btn" id="search-clear">Clear</button>
+  </div>
+  <p class="search-sheet__hint" id="search-hint"></p>
+</div>
+
+<main id="top">
+
+<!-- ══════════════════════════ AUTH ══════════════════════════ -->
+<section class="auth" id="view-auth" hidden>
+  <div class="wrap auth__grid">
+
+    <aside class="auth__side">
+      <span class="eyebrow"><i class="eyebrow__dot"></i> Welcome back</span>
+      <h2>Eleven seats.<br><em>One ticket at a time.</em></h2>
+      <p>An account keeps your order, your saved plates and every ticket you have fired in one place —
+         and it lets the kitchen know who is calling.</p>
+      <ul class="auth__points">
+        <li><span>🧺</span><div><b>Build an order</b><small>Add plates, change quantities, check out in one flow.</small></div></li>
+        <li><span>❤️</span><div><b>Save what you love</b><small>The heart keeps dishes on your own list.</small></div></li>
+        <li><span>🧾</span><div><b>Follow the ticket</b><small>Live cooking stages, then an itemised bill.</small></div></li>
+        <li><span>⭐</span><div><b>Review the table</b><small>Your notes land straight on the chef’s board.</small></div></li>
+      </ul>
+      <figure class="auth__shot">
+        <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=700&q=78&fit=crop" alt="The dining room at Bistro Eleven" loading="lazy">
+      </figure>
+    </aside>
+
+    <div class="auth__panel">
+      <div class="auth__tabs" role="tablist">
+        <button class="is-on" data-auth-tab="in">Sign in</button>
+        <button data-auth-tab="up">Create account</button>
+        <button data-auth-tab="staff">Kitchen staff</button>
+      </div>
+
+      <p class="auth__note" id="auth-note" hidden></p>
+
+      <form class="auth__form" id="form-in" novalidate>
+        <div class="field"><label for="in-email">Email</label>
+          <input type="email" id="in-email" placeholder="you@example.com" autocomplete="email" required></div>
+        <div class="field"><label for="in-pass">Password</label>
+          <input type="password" id="in-pass" placeholder="Your password" autocomplete="current-password" required>
+          <span class="field__err" id="in-err">Check your email and password.</span></div>
+        <button class="btn btn--primary btn--block" type="submit">Sign in</button>
+        <button class="text-btn" type="button" id="auth-demo">Use the demo account</button>
+      </form>
+
+      <form class="auth__form" id="form-up" hidden novalidate>
+        <div class="field"><label for="up-name">Full name</label>
+          <input type="text" id="up-name" placeholder="Rania Putri" autocomplete="name" required></div>
+        <div class="field"><label for="up-email">Email</label>
+          <input type="email" id="up-email" placeholder="you@example.com" autocomplete="email" required></div>
+        <div class="field"><label for="up-pass">Password</label>
+          <input type="password" id="up-pass" placeholder="At least 6 characters" autocomplete="new-password" required>
+          <span class="field__err" id="up-err">Pick a password with 6 or more characters.</span></div>
+        <div class="field"><label for="up-phone">Phone <em>optional</em></label>
+          <input type="tel" id="up-phone" placeholder="0811 2233 4455" autocomplete="tel"></div>
+        <div class="field"><label for="up-addr">Delivery address <em>optional</em></label>
+          <input type="text" id="up-addr" placeholder="Street, no., city" autocomplete="street-address"></div>
+        <button class="btn btn--primary btn--block" type="submit">Create account &amp; sign in</button>
+        <small class="muted">Saved only in this browser — no server, no email sent.</small>
+      </form>
+
+      <form class="auth__form" id="form-staff" hidden novalidate>
+        <div class="field"><label for="sf-user">Staff username</label>
+          <input type="text" id="sf-user" placeholder="chef" autocomplete="username" required></div>
+        <div class="field"><label for="sf-pass">Password</label>
+          <input type="password" id="sf-pass" placeholder="Kitchen password" autocomplete="current-password" required>
+          <span class="field__err" id="sf-err">Those credentials don’t match the kitchen.</span></div>
+        <button class="btn btn--primary btn--block" type="submit">Open the service board</button>
+        <p class="auth__hint">Demo kitchen login — user <b>chef</b> · password <b>bistro11</b>.
+          Change it in <code>assets/js/data.js</code>.</p>
+      </form>
+
+      <p class="auth__back"><button class="text-btn" id="auth-browse" type="button">Keep browsing without an account</button></p>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════════════════════ GUEST POV ══════════════════════════ -->
+<div id="view-guest">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero__bg" aria-hidden="true"></div>
+    <div class="hero__grain" aria-hidden="true"></div>
+
+    <div class="hero__inner">
+      <div class="hero__copy">
+        <span class="eyebrow reveal" data-reveal>
+          <i class="eyebrow__dot"></i> Now taking orders · Open till 23:00
+        </span>
+        <h1 class="reveal" data-reveal>
+          Seasonal plates<br><em>&amp; slow evenings</em>
+        </h1>
+        <p class="lede reveal" data-reveal>
+          Wood-fired mains, a bakery that starts at 4am, and small-batch drinks —
+          served in a room that smells like butter and toasted coffee.
+          Build your order, save what you love, and watch it come to life.
+        </p>
+        <div class="hero__cta reveal" data-reveal>
+          <a class="btn btn--primary" href="#menu" data-nav="menu">
+            Explore the menu
+            <svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+          </a>
+          <button class="btn btn--ghost" id="hero-reserve">Order for tonight</button>
+        </div>
+        <dl class="hero__stats reveal" data-reveal>
+          <div><dt>25</dt><dd>dishes daily</dd></div>
+          <div><dt>4.8</dt><dd>guest rating</dd></div>
+          <div><dt>22<span>min</span></dt><dd>avg. to door</dd></div>
+        </dl>
+      </div>
+
+      <div class="hero__plates">
+        <figure class="float-card float-card--a">
+          <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=560&q=78&fit=crop" alt="Three plates of grilled seasonal mains" loading="eager">
+          <figcaption><b>Beef Tasting Trio</b><span>Chef’s pick</span></figcaption>
+        </figure>
+        <figure class="float-card float-card--b">
+          <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=420&q=78&fit=crop" alt="Signature cheeseburger" loading="eager">
+          <figcaption><b>Eleven Burger</b><span>1.2k saved</span></figcaption>
+        </figure>
+        <figure class="float-card float-card--c">
+          <img src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=420&q=78&fit=crop" alt="Dark chocolate drip cake" loading="eager">
+          <figcaption><b>Drip Cake</b><span>Bakery</span></figcaption>
+        </figure>
+        <div class="hero__ring" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <a class="scroll-cue" href="#pillars" data-nav="pillars" aria-label="Scroll down">
+      <span></span>
+      <em>scroll — today’s board is below</em>
+    </a>
+  </section>
+
+  <!-- PILLARS -->
+  <section class="pillars" id="pillars">
+    <div class="wrap">
+      <div class="pillar-grid">
+        <article class="pillar reveal" data-reveal>
+          <span class="pillar__ico">🔥</span>
+          <h3>Wood-Fired Mains</h3>
+          <p>Slow-grilled over oak and vine. Cooked to order, never held under a lamp.</p>
+          <button class="link-btn" data-jump-cat="Mains">Browse mains →</button>
+        </article>
+        <article class="pillar reveal" data-reveal>
+          <span class="pillar__ico">🥐</span>
+          <h3>Fresh Bakery</h3>
+          <p>Laminated at 4am, out of the oven by seven. Butter, salt, time — that’s all.</p>
+          <button class="link-btn" data-jump-cat="Bakery">Browse bakery →</button>
+        </article>
+        <article class="pillar reveal" data-reveal>
+          <span class="pillar__ico">🍹</span>
+          <h3>Small-Batch Drinks</h3>
+          <p>Single-origin pour-overs and zero-proof cordials pressed in house.</p>
+          <button class="link-btn" data-jump-cat="Drinks">Browse drinks →</button>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- MENU -->
+  <section class="menu" id="menu">
+    <div class="wrap">
+      <header class="sec-head">
+        <div>
+          <span class="eyebrow reveal" data-reveal><i class="eyebrow__dot"></i> The board</span>
+          <h2 class="reveal" data-reveal>Our kitchen specials</h2>
+        </div>
+        <p class="sec-head__note reveal" data-reveal>
+          Tap <b>Details</b> under any dish to see exactly what goes in it.
+          Add to cart sits right beside it — no page reloads.
+        </p>
+      </header>
+
+      <div class="toolbar reveal" data-reveal>
+        <div class="chips" id="chips"></div>
+        <div class="toolbar__right">
+          <label class="sort">
+            <span>Sort</span>
+            <select id="sort-select">
+              <option value="featured">Featured</option>
+              <option value="price-asc">Price · low to high</option>
+              <option value="price-desc">Price · high to low</option>
+              <option value="rating">Top rated</option>
+              <option value="az">Name A–Z</option>
+            </select>
+          </label>
+          <button class="chip chip--wish" id="chip-wish-only" aria-pressed="false">
+            <svg viewBox="0 0 24 24"><path d="M12 20.3s-7.6-4.6-7.6-9.7A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.6 3c0 5.1-7.6 9.7-7.6 9.7z"/></svg>
+            Saved
+          </button>
+        </div>
+      </div>
+
+      <p class="result-meta" id="result-meta" hidden></p>
+      <div class="grid" id="menu-grid"></div>
+      <div class="empty" id="menu-empty" hidden>
+        <span>🍽️</span>
+        <h4>Nothing on the board matches that</h4>
+        <p id="empty-msg"></p>
+        <button class="btn btn--ghost" id="empty-reset">Show the full menu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STORY -->
+  <section class="story" id="story">
+    <div class="wrap story__grid">
+      <div class="story__media">
+        <figure class="shot shot--1">
+          <img src="https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=700&q=80&fit=crop" alt="Candlelit table being served at Bistro Eleven">
+        </figure>
+        <figure class="shot shot--2">
+          <img src="https://images.unsplash.com/photo-1543007630-9710e4a00a20?w=560&q=80&fit=crop" alt="The amber-lit bar">
+        </figure>
+        <figure class="shot shot--3">
+          <img src="https://images.unsplash.com/photo-1442512595331-e89e73853f31?w=460&q=80&fit=crop" alt="Barista pouring a slow brew">
+        </figure>
+      </div>
+      <div class="story__copy">
+        <span class="eyebrow reveal" data-reveal><i class="eyebrow__dot"></i> Our story</span>
+        <h2 class="reveal" data-reveal>Eleven seats,<br>one very stubborn oven</h2>
+        <p class="reveal" data-reveal>We opened in a narrow corner unit with eleven stools and a second-hand wood oven that
+          leaked smoke for the first three weeks. Nobody left. Turns out people will wait for a
+          thing that is actually being cooked.</p>
+        <p class="reveal" data-reveal>Everything still follows that rule — the bread is laminated before sunrise, the
+          cordials are pressed by hand, and nothing on the board has been sitting since yesterday.
+          When you order, the ticket prints on the pass and the clock starts.</p>
+        <ul class="story__list reveal" data-reveal>
+          <li><b>Sourced daily</b> from four farms inside the province</li>
+          <li><b>Cooked to order</b> — we close the kitchen at 22:30, not before</li>
+          <li><b>Allergens listed</b> on every dish, no exceptions</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- GALLERY -->
+  <section class="gallery" id="gallery">
+    <div class="wrap">
+      <h2 class="reveal" data-reveal>From the pass</h2>
+      <div class="scatter" id="scatter"></div>
+    </div>
+  </section>
+
+  <!-- REVIEWS -->
+  <section class="reviews" id="reviews">
+    <div class="wrap">
+      <header class="sec-head">
+        <div>
+          <span class="eyebrow reveal" data-reveal><i class="eyebrow__dot"></i> Guest book</span>
+          <h2 class="reveal" data-reveal>What people said</h2>
+        </div>
+        <div class="rating-summary reveal" data-reveal>
+          <strong id="rev-avg">4.8</strong>
+          <div><span id="rev-stars"></span><small id="rev-count">0 reviews</small></div>
+        </div>
+      </header>
+      <div class="review-grid" id="review-list"></div>
+      <div class="reviews__cta reveal" data-reveal>
+        <p>Been by the table? Tell the kitchen how it went.</p>
+        <button class="btn btn--primary" id="btn-write-review">
+          <svg viewBox="0 0 24 24"><path d="M4 20h4L20 8l-4-4L4 16v4z"/><path d="M14.5 5.5l4 4"/></svg>
+          Write a review
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISIT -->
+  <section class="visit" id="visit">
+    <div class="wrap visit__grid">
+      <div class="visit__card reveal" data-reveal>
+        <h3>Find the table</h3>
+        <dl class="visit__dl" id="visit-dl"></dl>
+        <div class="visit__acts">
+          <button class="btn btn--primary" id="visit-order">Start an order</button>
+          <a class="btn btn--ghost" id="visit-directions" href="#" target="_blank" rel="noopener">Get directions</a>
+        </div>
+      </div>
+      <div class="visit__map reveal" data-reveal>
+        <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=900&q=80&fit=crop" alt="The dining room">
+        <span class="visit__pin" id="visit-pin"></span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- ══════════════════════════ ADMIN / CHEF POV ══════════════════════════ -->
+<section class="admin" id="view-admin" hidden>
+  <div class="wrap">
+    <header class="admin__head">
+      <div>
+        <span class="eyebrow"><i class="eyebrow__dot"></i> Chef console</span>
+        <h2>Service board</h2>
+      </div>
+      <div class="admin__head-actions">
+        <span class="live"><i></i> live <small id="admin-who"></small></span>
+        <button class="btn btn--ghost btn--sm" id="admin-seed">Reset demo data</button>
+        <button class="btn btn--ghost btn--sm" id="admin-exit">Sign out</button>
+      </div>
+    </header>
+
+    <div class="stat-grid" id="admin-stats"></div>
+
+    <div class="admin__tabs" role="tablist">
+      <button class="is-on" data-tab="orders">Orders <span id="tab-orders-n">0</span></button>
+      <button data-tab="dishes">Menu <span id="tab-dishes-n">0</span></button>
+      <button data-tab="feedback">Reviews <span id="tab-feedback-n">0</span></button>
+    </div>
+
+    <div class="admin__panel" id="panel-orders">
+      <div class="ticket-rail" id="ticket-rail"></div>
+    </div>
+
+    <div class="admin__panel" id="panel-dishes" hidden>
+      <div class="da-bar">
+        <button class="btn btn--primary btn--sm" id="admin-new-dish">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+          Add a new dish
+        </button>
+        <small class="muted">Anything you post here goes straight onto the guest board.</small>
+      </div>
+      <div class="dish-admin" id="dish-admin"></div>
+    </div>
+
+    <div class="admin__panel" id="panel-feedback" hidden>
+      <div class="feedback-admin" id="feedback-admin"></div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="ftr">
+  <div class="wrap ftr__main">
+
+    <div class="ftr__brand">
+      <a class="brand" href="#top" data-nav="top">
+        <span class="brand__mark">XI</span>
+        <span class="brand__text"><strong>Bistro Eleven</strong><em>Est. 2015 · Neighbourhood Kitchen</em></span>
+      </a>
+      <p class="ftr__tag" id="ftr-tag"></p>
+      <h6>Follow the kitchen</h6>
+      <div class="ftr__social" id="ftr-social"></div>
+    </div>
+
+    <nav class="ftr__col">
+      <h5>Explore</h5>
+      <a href="#menu" data-nav="menu">Full menu</a>
+      <a href="#story" data-nav="story">Our story</a>
+      <a href="#gallery" data-nav="gallery">From the pass</a>
+      <a href="#reviews" data-nav="reviews">Guest book</a>
+      <a href="#visit" data-nav="visit">Visit us</a>
+      <button class="link-btn" id="ftr-account">Account settings</button>
+    </nav>
+
+    <div class="ftr__col">
+      <h5>Talk to us</h5>
+      <div class="ftr__rows" id="ftr-contact"></div>
+    </div>
+
+    <div class="ftr__col">
+      <h5>Find us</h5>
+      <div class="ftr__rows" id="ftr-loc"></div>
+    </div>
+
+    <div class="ftr__col">
+      <h5>Kitchen hours</h5>
+      <div class="ftr__rows ftr__rows--hours" id="ftr-hours"></div>
+      <small class="muted" id="ftr-kitchen-note">Last kitchen order 30 min before close.</small>
+    </div>
+
+  </div>
+  <div class="wrap ftr__bar">
+    <small id="ftr-legal"></small>
+    <div class="ftr__pay" id="ftr-pay"></div>
+  </div>
+</footer>
+
+<!-- ══════════════════════════ CART DRAWER ══════════════════════════ -->
+<div class="backdrop" id="backdrop" hidden></div>
+<aside class="drawer" id="cart-drawer" aria-label="Your order" hidden>
+  <header class="drawer__head">
+    <div><h3>Your table order</h3><small id="cart-count">0 items</small></div>
+    <button class="icon-btn" id="cart-close" aria-label="Close cart">
+      <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </header>
+  <div class="drawer__body" id="cart-items"></div>
+  <div class="drawer__empty" id="cart-empty" hidden>
+    <span>🧺</span><p>Nothing in the basket yet.</p>
+    <button class="btn btn--ghost" id="cart-browse">Browse the menu</button>
+  </div>
+  <footer class="drawer__foot">
+    <div class="line"><span>Subtotal</span><b id="cart-sub">$0.00</b></div>
+    <div class="line line--muted"><small>Taxes &amp; service calculated at checkout</small></div>
+    <button class="btn btn--primary btn--block" id="cart-checkout">Checkout <span id="cart-checkout-amt">$0.00</span></button>
+  </footer>
+</aside>
+
+<!-- ══════════════════════════ MODAL ROOT ══════════════════════════ -->
+<div class="modal-root" id="modal-root" hidden></div>
+
+<!-- ══════════════════════════ ORDER TRACKER ══════════════════════════ -->
+<div class="tracker" id="tracker" hidden>
+  <div class="tracker__card">
+    <div class="tracker__pan">
+      <span class="steam s1"></span><span class="steam s2"></span><span class="steam s3"></span>
+      <div class="pan">🍳</div>
+      <div class="tracker__ring"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="52" class="ring-bg"/><circle cx="60" cy="60" r="52" class="ring-fg" id="ring-fg"/></svg><b id="ring-pct">0%</b></div>
+    </div>
+    <h3 id="tracker-title">Sending your ticket to the pass…</h3>
+    <p id="tracker-sub">The kitchen printer just woke up.</p>
+    <ol class="tracker__steps" id="tracker-steps"></ol>
+  </div>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script src="assets/js/data.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
