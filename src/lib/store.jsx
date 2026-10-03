@@ -396,16 +396,24 @@ export function AppProvider({ children }) {
       if (!o) return;
       o.status = STATUS_FLOW[Math.min(STATUS_FLOW.indexOf(o.status) + 1, STATUS_FLOW.length - 1)];
     });
-    const o = data.orders.find(x => x.id === id);
-    if (o) toast(`${o.id} moved on`, "🔔");
-  }, [write, data.orders, toast]);
-
-  const setOrderStatus = useCallback((id, status) => {
-    write(d => {
-      const o = d.orders.find(x => x.id === id);
-      if (o) o.status = status;
-    });
   }, [write]);
+
+  // Global Demo Simulation: automatically advance active orders
+  useEffect(() => {
+    const activeOrders = data.orders.filter(o => o.status !== "done" && o.status !== "cancelled");
+    if (activeOrders.length === 0) return;
+    
+    const timeouts = [];
+    activeOrders.forEach(o => {
+      // 12 seconds for delivering animation, 3.5 seconds for kitchen stages
+      const delay = o.status === "delivering" ? 12000 : 3500;
+      timeouts.push(setTimeout(() => {
+        advanceOrder(o.id);
+      }, delay));
+    });
+    
+    return () => timeouts.forEach(clearTimeout);
+  }, [data.orders, advanceOrder]);
 
   const emailOrder = useCallback(id => {
     write(d => { const o = d.orders.find(x => x.id === id); if (o) o.emailed = true; });

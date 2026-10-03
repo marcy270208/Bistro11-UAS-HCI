@@ -71,14 +71,7 @@ export default function TrackOrder({ orderId }) {
   const arrived = idx === STEPS.length - 1;
   const out = order?.status === "delivering";
 
-  // Auto-advance simulation for demo purposes
-  useEffect(() => {
-    if (!order || arrived) return;
-    const tId = setTimeout(() => {
-      app.advanceOrder(order.id);
-    }, order.status === "delivering" ? 12000 : 3500);
-    return () => clearTimeout(tId);
-  }, [order?.status, order?.id, arrived, app]);
+
 
   useEffect(() => {
     if (!out || still()) return undefined;
@@ -211,13 +204,7 @@ export default function TrackOrder({ orderId }) {
           ) : near ? (
             <button className="btn btn--primary" onClick={() => app.receiveOrder(orderId)}>
               {t("Order received", "Pesanan sudah diterima")}
-            </button>
-          ) : (
-            <button className="btn btn--primary"
-                    onClick={() => { app.closeModal(); app.openChat(); }}>
-              {t("Ask the kitchen", "Tanya dapur")}
-            </button>
-          )}
+            </button>}
         </div>
       </div>
     </>
