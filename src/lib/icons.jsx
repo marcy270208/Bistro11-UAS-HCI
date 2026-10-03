@@ -31,7 +31,11 @@ const PATHS = {
   chevronL: <path d="M15 6l-6 6 6 6" />,
   chevronR: <path d="M9 6l6 6-6 6" />,
   chat: <><path d="M4 5.5h16v11H9.5L5.5 20.5v-4H4z" /><path d="M8 9.5h8M8 12.5h5.5" /></>,
-  send: <><path d="M4 12 20.5 4.2 15 20l-3.4-6.2z" /><path d="M11.6 13.8 20.5 4.2" /></>
+  send: <><path d="M4 12 20.5 4.2 15 20l-3.4-6.2z" /><path d="M11.6 13.8 20.5 4.2" /></>,
+  home: <path d="M4 11l8-7 8 7v8.5a1.5 1.5 0 0 1-1.5 1.5H14.5v-6h-5v6H5.5A1.5 1.5 0 0 1 4 19.5z" />,
+  board: <><rect x="3.5" y="3.5" width="7.5" height="7.5" rx="2" /><rect x="13" y="3.5" width="7.5" height="7.5" rx="2" /><rect x="3.5" y="13" width="7.5" height="7.5" rx="2" /><rect x="13" y="13" width="7.5" height="7.5" rx="2" /></>,
+  download: <><path d="M12 3.5v10.5M8 10.5l4 4 4-4" /><path d="M4.5 20h15" /></>,
+  share: <><path d="M12 15.5V4M8.5 7.2 12 3.7l3.5 3.5" /><path d="M5 12.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6.5" /></>
 };
 
 export default function Ico({ name, className, ...rest }) {

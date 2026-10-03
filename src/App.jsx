@@ -6,6 +6,8 @@ import ModalRoot from "./components/ModalRoot.jsx";
 import OrderTracker from "./components/OrderTracker.jsx";
 import PreviewBar from "./components/PreviewBar.jsx";
 import ChatWidget from "./components/ChatWidget.jsx";
+import MobileNav from "./components/MobileNav.jsx";
+import InstallBar from "./components/InstallBar.jsx";
 import Toasts from "./components/Toasts.jsx";
 import Footer from "./components/Footer.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
@@ -23,12 +25,14 @@ export default function App() {
         {ui.view === "guest" && <GuestPage />}
         {ui.view === "admin" && <AdminPage />}
       </main>
-      {ui.view !== "admin" && <Footer />}
+      {ui.view === "guest" && <Footer />}
       <CartDrawer />
       <ModalRoot />
       <OrderTracker />
       <PreviewBar />
-      <ChatWidget />
+      {app.signedIn && <ChatWidget />}
+      <MobileNav />
+      <InstallBar />
       <Toasts />
     </>
   );

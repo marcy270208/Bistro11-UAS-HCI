@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { useApp } from "../lib/store.jsx";
 import { cardPic, widePic } from "../data/photos.js";
 import Ico from "../lib/icons.jsx";
 import Lightbox from "./Lightbox.jsx";
@@ -11,6 +12,7 @@ const DRAG_PX = 6;
    The pointer is only captured once a drag actually starts, so the arrows and
    dots still receive their click, and a click without a drag opens the full photo. */
 export default function PhotoGallery({ photos = [], name, cat, size = "card", label }) {
+  const { t } = useApp();
   const list = (photos.length ? photos : [""]).map(s => (SIZES[size] || cardPic)(s));
   const n = list.length;
   const [i, setI] = useState(0);
@@ -73,7 +75,7 @@ export default function PhotoGallery({ photos = [], name, cat, size = "card", la
       }}
       tabIndex={0}
       role="group"
-      aria-label={label || `${name} - ${n} photo${n > 1 ? "s" : ""}. Press enter for the full photo.`}
+      aria-label={label || t(`${name}, ${n} photo${n > 1 ? "s" : ""}. Press enter for the full photo.`, `${name}, ${n} foto. Tekan enter untuk foto penuh.`)}
     >
       <div
         className={`pg__track${moving ? " is-drag" : ""}`}
@@ -81,7 +83,7 @@ export default function PhotoGallery({ photos = [], name, cat, size = "card", la
       >
         {list.map((src, idx) => (
           <div className="pg__slide" key={idx} aria-hidden={idx !== i}>
-            <img src={src} alt={idx === 0 ? name : `${name} - angle ${idx + 1}`}
+            <img src={src} alt={idx === 0 ? name : t(`${name}, angle ${idx + 1}`, `${name}, sudut ${idx + 1}`)}
                  loading={idx === 0 ? "eager" : "lazy"} decoding="async"
                  draggable="false" />
           </div>
@@ -90,10 +92,10 @@ export default function PhotoGallery({ photos = [], name, cat, size = "card", la
 
       {n > 1 && (
         <>
-          <button className="pg__nav pg__nav--prev" onClick={stop(() => go(-1))} aria-label={`Previous photo of ${name}`}>
+          <button className="pg__nav pg__nav--prev" onClick={stop(() => go(-1))} aria-label={t(`Previous photo of ${name}`, `Foto sebelumnya dari ${name}`)}>
             <Ico name="chevronL" />
           </button>
-          <button className="pg__nav pg__nav--next" onClick={stop(() => go(1))} aria-label={`Next photo of ${name}`}>
+          <button className="pg__nav pg__nav--next" onClick={stop(() => go(1))} aria-label={t(`Next photo of ${name}`, `Foto berikutnya dari ${name}`)}>
             <Ico name="chevronR" />
           </button>
           <span className="pg__count" data-fb-tone={cat}>{i + 1}/{n}</span>
@@ -102,7 +104,7 @@ export default function PhotoGallery({ photos = [], name, cat, size = "card", la
               <button key={idx}
                       className={`pg__dot${idx === i ? " is-on" : ""}`}
                       onClick={stop(() => setI(idx))}
-                      aria-label={`Show photo ${idx + 1} of ${n}`} />
+                      aria-label={t(`Show photo ${idx + 1} of ${n}`, `Tampilkan foto ${idx + 1} dari ${n}`)} />
             ))}
           </div>
         </>

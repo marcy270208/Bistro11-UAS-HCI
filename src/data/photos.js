@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════
    Photography. One place to change every picture in the app.
-   `ANGLES[dishId]` is the swipe list - first entry is the card cover.
+   `ANGLES[dishId]` is the swipe list — first entry is the card cover.
    Slugs are Unsplash photo ids; they are always rendered at the exact
    ratio of the frame they sit in, so nothing gets cropped twice.
    ═══════════════════════════════════════════════════════════ */
@@ -14,15 +14,15 @@ export const pic = (slug, w, h) => src(slug, `w=${w}&h=${h}&fit=crop&q=80&auto=f
 export const fullPic = slug => src(slug, "w=1600&q=85&auto=format");
 
 /* frame ratios used across the site */
-export const CARD = [640, 480];    /* .dish__media - 4:3 */
-export const WIDE = [1200, 720];   /* .dd__hero / map - 5:3 */
-export const BANNER = [900, 600];   /* .auth__shot - 3:2 strip */
+export const CARD = [640, 480];    /* .dish__media — 4:3 */
+export const WIDE = [1200, 720];   /* .dd__hero / map — 5:3 */
+export const BANNER = [900, 600];   /* .auth__shot — 3:2 strip */
 
 export const cardPic = slug => pic(slug, ...CARD);
 export const widePic = slug => pic(slug, ...WIDE);
 export const thumbPic = slug => pic(slug, 168, 148);   /* .ci / .da-row / .mini-order thumbnails */
 
-/* the five ambience frames in .scatter, in DOM order - each gets its own ratio */
+/* the five ambience frames in .scatter, in DOM order — each gets its own ratio */
 const SCATTER = [[600, 800], [700, 700], [640, 800], [1000, 625], [1000, 625]];
 export const scatterPic = (slug, i) => {
   const [w, h] = SCATTER[i] || SCATTER[SCATTER.length - 1];
@@ -30,7 +30,7 @@ export const scatterPic = (slug, i) => {
 };
 
 /* Three real angles per dish, in swipe order. The first slug is the card cover.
-   These are slugs, not urls - each frame builds the exact ratio it needs. */
+   These are slugs, not urls — each frame builds the exact ratio it needs. */
 const A = {
   s1: ["1476224203421-9ac39bcb3327", "1578172397201-efaa902004a3", "1786502870203-6fa112102b43"],
   s2: ["1512621776951-a57141f2eefd", "1547496502-affa22d38842", "1543339308-43e59d6b73a6"],
@@ -60,7 +60,7 @@ const A = {
 
 export const ANGLES = A;
 
-/* ambience shots - interiors verified against the room copy */
+/* ambience shots — interiors verified against the room copy */
 export const AMBIENCE = {
   bar: "1543007630-9710e4a00a20",
   room: "1517248135467-4c7edcad34c4",
@@ -70,9 +70,9 @@ export const AMBIENCE = {
 };
 
 export const GALLERY = [
-  { slug: AMBIENCE.bar, cap: "The amber bar, 21:40" },
-  { slug: AMBIENCE.room, cap: "Eleven seats and a long counter" },
-  { slug: AMBIENCE.service, cap: "Service, second sitting" },
-  { slug: AMBIENCE.brew, cap: "Morning brew before doors" },
-  { slug: AMBIENCE.bake, cap: "Bake at six, sharp" }
+  { slug: AMBIENCE.bar, cap: "The amber bar, 21:40", cap_id: "Bar kekuningan, 21.40" },
+  { slug: AMBIENCE.room, cap: "Eleven seats and a long counter", cap_id: "Sebelas kursi dan bar yang panjang" },
+  { slug: AMBIENCE.service, cap: "Service, second sitting", cap_id: "Layanan, giliran duduk kedua" },
+  { slug: AMBIENCE.brew, cap: "Morning brew before doors", cap_id: "Seduhan pagi sebelum pintu dibuka" },
+  { slug: AMBIENCE.bake, cap: "Bake at six, sharp", cap_id: "Panggang pukul enam tepat" }
 ];

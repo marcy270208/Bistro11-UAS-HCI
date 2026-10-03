@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useApp } from "../lib/store.jsx";
 import { money, plural } from "../lib/format.js";
 import Bill from "./modals/Bill.jsx";
-import TrackOrder from "./modals/TrackOrder.jsx";
 
 const TYPE_LABEL = { delivery: ["Delivery", "Antar"], pickup: ["Pickup", "Ambil sendiri"], table: ["Table", "Meja"] };
 const MAX_LINES = 5;
@@ -37,11 +36,7 @@ export default function OrderTracker() {
     push(() => setOut(true), tEnd + 700);
     push(() => {
       app.setTracker(null);
-      if (order.type === "delivery") {
-        app.openModal(<TrackOrder orderId={order.id} />);
-      } else {
-        app.openModal(<Bill order={order} />, "modal--slim");
-      }
+      app.openModal(<Bill order={order} />, "modal--slim");
     }, tEnd + 700 + 700);
 
     return () => { timers.current.forEach(clearTimeout); timers.current = []; };

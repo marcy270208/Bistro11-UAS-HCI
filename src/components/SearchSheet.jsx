@@ -4,13 +4,13 @@ import Ico from "../lib/icons.jsx";
 
 export default function SearchSheet() {
   const app = useApp();
-  const { ui, patchUi, results, goSection } = app;
+  const { ui, patchUi, results, goSection, t } = app;
   const input = useRef(null);
 
   useEffect(() => {
     if (!ui.search) return;
-    const t = setTimeout(() => input.current?.focus(), 60);
-    return () => clearTimeout(t);
+    const id = setTimeout(() => input.current?.focus(), 60);
+    return () => clearTimeout(id);
   }, [ui.search]);
 
   const close = () => patchUi({ search: false });
@@ -31,11 +31,11 @@ export default function SearchSheet() {
           type="text"
           value={ui.query}
           placeholder={onConsole
-            ? "Search the chef board - names, tags, categories…"
-            : "Search the menu - try “p” for Penne, Pesto, Pan-Seared…"}
+            ? t("Search the chef board, names, tags, categories…", "Cari di papan dapur, nama, tag, kategori…")
+            : t("Search the menu, try “p” for Penne, Pesto, Pan-Seared…", "Cari menu, coba “p” untuk Penne, Pesto, Pan-Seared…")}
           autoComplete="off"
           spellCheck="false"
-          aria-label={onConsole ? "Search the chef board" : "Search the menu"}
+          aria-label={onConsole ? t("Search the chef board", "Cari di papan dapur") : t("Search the menu", "Cari menu")}
           onChange={e => type(e.target.value)}
           onKeyDown={e => {
             if (e.key === "Escape") close();
@@ -43,23 +43,23 @@ export default function SearchSheet() {
           }}
         />
         <kbd>Esc</kbd>
-        <button className="text-btn" onClick={() => type("")}>Clear</button>
+        <button className="text-btn" onClick={() => type("")}>{t("Clear", "Bersihkan")}</button>
       </div>
       <p className="search-sheet__hint">
         {!q
           ? onConsole
-            ? "Filters the Menu tab below - hidden dishes included."
-            : "Prefix search - one letter is enough. Press / anywhere to jump here."
+            ? t("Filters the Menu tab below, hidden dishes included.", "Menyaring tab Menu di bawah, termasuk hidangan yang disembunyikan.")
+            : t("Prefix search, one letter is enough. Press / anywhere to jump here.", "Pencarian awalan, satu huruf sudah cukup. Tekan / di mana pun untuk ke sini.")
           : n === 0
-            ? <>Nothing on the {onConsole ? "chef board" : "board"} matches “{q}”.</>
+            ? t(`Nothing on the ${onConsole ? "chef board" : "board"} matches “${q}”.`, `Tidak ada yang cocok dengan “${q}” di ${onConsole ? "papan dapur" : "papan menu"}.`)
             : onConsole
               ? <>
-                  <b>{n}</b> of {app.data.menu.length} dishes match “{q}”
-                  {" - showing them on the Menu tab"}
+                  <b>{n}</b> {t("of", "dari")} {app.data.menu.length} {t("dishes match", "hidangan cocok")} “{q}”
+                  {t(", showing them on the Menu tab", ", ditampilkan di tab Menu")}
                 </>
               : <>
-                  <b>{n}</b> {n === 1 ? "dish" : "dishes"} match “{q}”
-                  {results.exact === false ? " - none start with it, so we widened to contains" : ""}
+                  <b>{n}</b> {n === 1 ? t("dish", "hidangan") : t("dishes", "hidangan")} {t("match", "cocok")} “{q}”
+                  {results.exact === false ? t(", none start with it, so we widened the search", ", tidak ada yang diawali kata itu, jadi pencarian diperluas") : ""}
                 </>}
       </p>
     </div>

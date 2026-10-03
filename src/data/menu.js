@@ -1,10 +1,13 @@
 /* ═══════════════════════════════════════════════════════════
-   Menu seed - dishes, categories, allergens.
+   Menu seed — dishes, categories, allergens.
    Photography lives in ./photos.js and is keyed by dish id.
    ═══════════════════════════════════════════════════════════ */
 import { ANGLES } from "./photos.js";
 
 export const CATEGORIES = ["Starters", "Mains", "Pizza & Pasta", "Desserts", "Bakery", "Drinks"];
+
+/* only cooked plates meet the chilli mill, so a sweet or poured basket skips the heat dial */
+export const wantsHeat = cat => cat === "Starters" || cat === "Mains" || cat === "Pizza & Pasta";
 
 const RAW = [
   /* ─────────── Starters ─────────── */
@@ -39,7 +42,7 @@ const RAW = [
   {
     id: "s5", name: "Eleven Sushi Boat", cat: "Starters", price: 144000,
     badge: "chef", rating: 4.9, reviews: 305, mins: 18, kcal: 540,
-    desc: "Eighteen pieces rolled to order - tuna, salmon, avocado and the house spicy sauce.",
+    desc: "Eighteen pieces rolled to order — tuna, salmon, avocado and the house spicy sauce.",
     ing: [["🍚", "Sushi rice"], ["🐟", "Yellowfin tuna"], ["🍣", "Salmon belly"], ["🥑", "Avocado"], ["🥒", "Cucumber"], ["🌿", "Nori"], ["🍶", "Rice vinegar"], ["🌶️", "House shacha"]],
     alg: ["Fish", "Soy"], tags: ["japanese", "sharing", "raw", "seafood"]
   },
@@ -48,7 +51,7 @@ const RAW = [
   {
     id: "m1", name: "Beef Tasting Trio", cat: "Mains", price: 256000,
     badge: "chef", rating: 4.9, reviews: 421, mins: 26, kcal: 890,
-    desc: "Three cuts off the same animal - cured, slow-braised and charred over oak.",
+    desc: "Three cuts off the same animal — cured, slow-braised and charred over oak.",
     ing: [["🥩", "Dry-aged sirloin"], ["🍖", "Braised short rib"], ["🌶️", "Chilli-jam glaze"], ["🧅", "Pickled shallot"], ["🥬", "Watercress"], ["🥜", "Cashew crumb"], ["🌿", "Thai basil"], ["🫙", "Bone-jus reduction"]],
     alg: ["Tree nuts", "Sulphites"], tags: ["beef", "grill", "sharing", "signature"]
   },
@@ -168,14 +171,14 @@ const RAW = [
   {
     id: "k2", name: "Velvet Cappuccino Flight", cat: "Drinks", price: 52000,
     badge: "new", rating: 4.8, reviews: 502, mins: 6, kcal: 140,
-    desc: "Three small cups - classic, oat and a honey-and-cardamom seasonal pour.",
+    desc: "Three small cups — classic, oat and a honey-and-cardamom seasonal pour.",
     ing: [["☕", "House espresso"], ["🥛", "Whole milk"], ["🌾", "Oat barista milk"], ["🍯", "Wildflower honey"], ["🫚", "Cardamom"], ["🧊", "Ice option"], ["🍫", "Cocoa dust"], ["💨", "Micro foam"]],
     alg: ["Dairy"], tags: ["coffee", "cappuccino", "latte", "milk", "drink"]
   },
   {
     id: "k3", name: "Barista's Table Coffee Toast", cat: "Drinks", price: 96000,
     badge: "chef", rating: 4.9, reviews: 231, mins: 10, kcal: 460,
-    desc: "A pot to share, four toasts and the butter board - built for a slow table.",
+    desc: "A pot to share, four toasts and the butter board — built for a slow table.",
     ing: [["☕", "Filter pot for 4"], ["🍞", "Bakery toast"], ["🧈", "Cultured butter"], ["🍓", "Berry jam"], ["🥚", "Soft egg"], ["🧀", "Cheese board"], ["🌿", "Herbs"], ["🍯", "Honeycomb"]],
     alg: ["Gluten", "Dairy", "Egg"], tags: ["coffee", "sharing", "brunch", "toast", "set"]
   },
@@ -188,7 +191,103 @@ const RAW = [
   }
 ];
 
-export const MENU = RAW.map(d => ({ ...d, imgs: ANGLES[d.id] || [] }));
+/* Indonesian menu names, keyed by dish id. The English name stays the record's
+   identity: orders, reviews and chat chips all store it, so it is never rewritten. */
+const NAME_ID = {
+  s1: "Talenan Haloumi Layup & Herbal",
+  s2: "Mangkuk Pelangi Bistro",
+  s3: "Salad Kale, Sitrus & Almond",
+  s4: "Sup Wortel Panggang Beludru",
+  s5: "Perahu Sushi Sebelas",
+  m1: "Trio Cicip Daging Sapi",
+  m2: "Pita Salmon Panggang Teflon",
+  m3: "Cheeseburger Sebelas",
+  m4: "Ayam Buttermilk & Kentang Goreng",
+  m5: "Piring Chef Cahaya Lilin",
+  p1: "Pizza Ayam Asap & Nanas",
+  p2: "Farfalle Pesto, Tomat Meletup",
+  p3: "Penne ala Emilia",
+  d1: "Kue Cokelat Hitam Tetes",
+  d2: "Kue Lapis Krim Rasberi",
+  d3: "Panna Cotta Stroberi",
+  d4: "Donat Tabur Konfeti",
+  d5: "Cupcake Mawar & Krim",
+  b1: "Roti Sourdough Pedesaan",
+  b2: "Croissant Mentega",
+  k1: "Kopi Seduh Tangan Single Origin",
+  k2: "Trio Cappuccino Beludru",
+  k3: "Roti Panggang Kopi Meja Barista",
+  k4: "Soda Stroberi & Jeruk Nipis"
+};
+
+/* Indonesian copy for the seeded dishes, keyed by id. A dish the chef adds
+   himself has no pair, so it simply stays in whatever language he typed. */
+const DESC_ID = {
+  s1: "Haloumi panggang dengan sayur layup, remah cabai, dan sourdough hangat.",
+  s2: "Alpukat, ubi panggang, kacang arab, dan lobak asam di atas daun herbal.",
+  s3: "Kale yang diremas dengan jeruk, serpihan feta, dan jus peras dingin di sisi piring.",
+  s4: "Wortel panggang lambat diblender dengan kelapa, ditutup yoghurt dan almond sangrai.",
+  s5: "Delapan belas potong diguling sesuai pesanan: tuna, salmon, alpukat, dan saus pedas rumah.",
+  m1: "Tiga potongan dari satu ekor yang sama: dikeringkan, dibraise lambat, dipanggang arang oak.",
+  m2: "Salmon berkulit renyah di atas pita bayam dan zucchini, dengan beurre blanc jeruk nipis.",
+  m3: "Dua patty dry-aged, cheddar leleh, saus rumah, dan acar di dalam roti kentang.",
+  m4: "Rendam buttermilk dua puluh empat jam, digoreng garing, kentang berkulit dan mayo cabai.",
+  m5: "Apa pun yang diputuskan dapur siang itu. Lima suapan, satu gelas anggur yang bagus sekali.",
+  p1: "Adonan panggang kayu api, ayam asap, nanas karamel, dan bawang merah.",
+  p2: "Pasta farfalle diaduk bersama pesto basil dan tomat ranjung yang meletup.",
+  p3: "Ragu daging dan pancetta enam jam, penne ditiraskan di wajan, hujan pecorino.",
+  d1: "Bolu cokelat 72 persen di bawah tetesan ganache dengan krim cokelat semprot.",
+  d2: "Spons vanila, curd rasberi, dan mascarpone kocok di bawah beri segar.",
+  d3: "Krim set dalam toples kecil, di atas stroberi macerasi dan rosemary.",
+  d4: "Donat brioche, glasir cokelat dan vanila, dengan taburan warna yang tidak masuk akal.",
+  d5: "Tiga cupcakes vanila dengan buttercream mawar dan satu rasberi di puncaknya.",
+  b1: "Gandum utuh dan gandum hitam, fermentasi empat puluh jam, dipanggang tiap pagi pukul enam.",
+  b2: "Dua puluh tujuh lipatan mentega Charentes-Poitou, dilaminasi sebelum matahari terbit.",
+  k1: "Ditimbang, dibloom, dan diseduh manual. Tanyakan kebun hari ini dari kartu di bar.",
+  k2: "Tiga cangkir kecil: klasik, oat, dan seduhan musiman madu dengan kapulaga.",
+  k3: "Satu pot untuk berbagi, empat roti panggang, dan talam keju. Untuk meja yang tidak buru-buru.",
+  k4: "Tanpa alkohol. Stroberi peras, jeruk nipis, mint, dan soda di atas es potong tangan."
+};
+
+const ING_ID = {
+  s1: ["Keju haloumi tua", "Selada little gem", "Cabai Aleppo", "Sourdough", "Lemon", "Minyak zaitun", "Peterseli daun datar", "Bawang putih panggang"],
+  s2: ["Alpukat hass", "Ubi panggang", "Kacang arab", "Wortel warna-warni", "Tunas polong", "Kol ungu asam", "Mangga", "Dressing sitrus"],
+  s3: ["Kale keriting", "Jeruk manis", "Keju feta domba", "Almond pipil", "Bawang merah", "Zaitun kalamata", "Madu", "Minyak lemon"],
+  s4: ["Wortel charentais", "Santan", "Yoghurt domba", "Almond sangrai", "Chervil", "Jahe segar", "Garam laut", "Merica putih"],
+  s5: ["Nasi sushi", "Tuna sirip kuning", "Perut salmon", "Alpukat", "Timun", "Nori", "Cuka beras", "Saus shacha rumah"],
+  m1: ["Sirloin dry-aged", "Short rib braised", "Glasir sambal cabai", "Bawang merah asam", "Selada air", "Remah mete", "Kemangi", "Reduc jus tulang"],
+  m2: ["Salmon Skotlandia", "Bayam", "Pita zucchini", "Jeruk limo Amalfi", "Saus beurre blanc", "Dill", "Bawang putih confit", "Garam Maldon"],
+  m3: ["Daging sapi dry-aged x2", "Keju cheddar tua", "Roti bun kentang", "Acar mentimun", "Tomat heirloom", "Selada rampion", "Saus rumah", "Bawang merah"],
+  m4: ["Paha ayam bebas", "Buttermilk", "Kentang varietas lama", "Mayo cabai", "Selada little gem", "Bawang putih bubuk", "Jahe", "Thyme"],
+  m5: ["Pilihan harian", "Seduhan sommelier", "Ikan pancing", "Daging padang", "Jamur hutan", "Herbal taman", "Mentega culture", "Roti bakery"],
+  p1: ["Adonan 72 jam", "Ayam asap applewood", "Nanas panggang", "Bawang merah", "Keju fior di latte", "Daun ketumbar", "Minyak cabai", "Glasir BBQ"],
+  p2: ["Pasta farfalle", "Basil genovesa", "Keju parmesan", "Kacang pinus", "Tomat ranjung", "Bawang putih", "Minyak Liguria", "Selada rocket"],
+  p3: ["Penne rigate", "Has dalam sapi", "Pancetta", "Tomat San Marzano", "Soffritto", "Keju pecorino", "Anggur merah", "Daun salam & thyme"],
+  d1: ["Cokelat couverture 72%", "Telur bebas", "Mentega Prancis", "Krim kental", "Espreso", "Tepung terigu", "Fleur de sel", "Kompot beri"],
+  d2: ["Rasberi", "Keju mascarpone", "Vanila Madagaskar", "Kue spons", "Telur", "Parutan lemon", "Daun mint", "Madu"],
+  d3: ["Stroberi Chalk Farm", "Krim Jersey", "Gula kastor", "Rosemary", "Polong vanila", "Gelatin", "Air mawar", "Jus lemon"],
+  d4: ["Adonan brioche", "Glasir cokelat", "Icing vanila", "Taburan gula warna", "Mentega", "Telur", "Garam", "Minyak bunga matahari"],
+  d5: ["Buttercream mawar", "Spons vanila", "Rasberi", "Telur", "Susu", "Vanila", "Gula halus", "Serpihan pistachio"],
+  b1: ["Gandum giling batu", "Tepung gandum hitam", "Air", "Garam laut", "Starter ragi 11 tahun", "Malt barli", "Bekatul gandum", "Fermentasi 40 jam"],
+  b2: ["Mentega Charentes", "Tepung T55", "Susu utuh", "Olesan telur", "Garam halus", "Gula kastor", "Laminasi 3 hari", "Panggang dek"],
+  k1: ["Kopi Guji Ethiopia", "Air saring", "Seduh 94°C", "Dosis 18 g", "Filter kertas", "Rasa: ceri", "Rasa: sitrus", "Rasa: gula tebu"],
+  k2: ["Espreso rumah", "Susu utuh", "Susu oat barista", "Madu bunga liar", "Kapulaga", "Bisa pakai es", "Taburan kakao", "Mikrofoam"],
+  k3: ["Pot seduh untuk 4", "Roti panggang bakery", "Mentega culture", "Selai beri", "Telur lembek", "Talam keju", "Herbal", "Sirang madu"],
+  k4: ["Stroberi peras", "Jeruk nipis segar", "Mint taman", "Air soda", "Es potong tangan", "Sirup tebu", "Bungai elder", "Nol alkohol"]
+};
+
+export const MENU = RAW.map(d => ({
+  ...d,
+  imgs: ANGLES[d.id] || [],
+  name_id: NAME_ID[d.id] || "",
+  desc_id: DESC_ID[d.id] || "",
+  ing_id: ING_ID[d.id] || []
+}));
+
+/* what the store backfills into a board that was seeded before this copy existed */
+export const LOCAL_BY_ID = Object.fromEntries(RAW.map(d => [
+  d.id, { name: d.name, name_id: NAME_ID[d.id] || "", desc: d.desc, desc_id: DESC_ID[d.id] || "", ing_id: ING_ID[d.id] || [] }
+]));
 
 export const STATUS_FLOW = ["new", "cooking", "ready", "delivering", "done"];
 export const STATUS_LABEL = { new: "New", cooking: "Cooking", ready: "Ready", delivering: "Out", done: "Served" };

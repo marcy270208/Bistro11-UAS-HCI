@@ -12,7 +12,6 @@
 .brand:hover .brand__mark{transform:rotate(-10deg) scale(1.06)}
 .brand__text{display:flex;flex-direction:column;line-height:1.12}
 .brand__text strong{font-family:var(--f-display);font-size:1.12rem;font-weight:600;letter-spacing:-.01em}
-.brand__text em{font-style:normal;font-size:.63rem;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
 .hdr__nav{display:flex;gap:4px;margin-left:8px}
 .hdr__nav a{position:relative;padding:8px 13px;border-radius:99px;font-size:.88rem;font-weight:500;
   color:var(--ink-2);transition:color .25s,background .25s}

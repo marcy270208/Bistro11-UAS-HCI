@@ -6,6 +6,7 @@ import ModalHead from "../ModalHead.jsx";
 
 export default function ReviewForm() {
   const app = useApp();
+  const { t } = app;
   const [stars, setStars] = useState(0);
   const [hover, setHover] = useState(0);
   const [name, setName] = useState(app.me?.name || "");
@@ -17,7 +18,7 @@ export default function ReviewForm() {
     const bad = { stars: !stars, name: name.trim().length < 2, text: text.trim().length < 12 };
     setErrs(bad);
     if (bad.stars || bad.name || bad.text) {
-      app.toast("Still missing a star rating, name and a sentence", "⭐");
+      app.toast(t("Still missing a star rating, name and a sentence", "Masih kurang penilaian bintang, nama, dan satu kalimat"), "⭐");
       return;
     }
     app.addReview({
@@ -25,56 +26,57 @@ export default function ReviewForm() {
       text: text.trim(), dish, date: new Date().toISOString().slice(0, 10), hidden: false
     });
     app.closeModal();
-    app.toast("Review posted - thank you, the kitchen will read it", "⭐");
+    app.toast(t("Review posted. Thank you, the kitchen will read it", "Ulasan terkirim. Terima kasih, dapur akan membacanya"), "⭐");
     app.goSection("reviews");
   };
 
   return (
     <>
-      <ModalHead title="Tell the kitchen" sub="Reviews go straight to the pass. Be honest - the chef reads them at midnight." />
+      <ModalHead title={t("Tell the kitchen", "Kabari dapur")}
+                 sub={t("Reviews go straight to the pass. Be honest, the chef reads them at midnight.", "Ulasan langsung sampai ke dapur. Jujur saja, chef membacanya lewat tengah malam.")} />
       <div className="modal__body">
         <div className={`field${errs.stars ? " err" : ""}`}>
-          <label>How was it?</label>
+          <label>{t("How was it?", "Bagaimana rasanya?")}</label>
           <div className="picker" onMouseLeave={() => setHover(0)}>
             {[1, 2, 3, 4, 5].map(i => (
               <button key={i} type="button" className={i <= (hover || stars) ? "on" : ""}
-                      aria-label={`${i} stars`}
+                      aria-label={t(`${i} stars`, `${i} bintang`)}
                       onClick={() => { setStars(i); setErrs(e => ({ ...e, stars: false })); }}
                       onMouseEnter={() => setHover(i)}>
                 <Ico name="star" />
               </button>
             ))}
           </div>
-          <small className="field__err">Pick a star count first.</small>
+          <small className="field__err">{t("Pick a star count first.", "Pilih jumlah bintangnya dulu.")}</small>
         </div>
 
         <div className="row2">
           <div className={`field${errs.name ? " err" : ""}`}>
-            <label htmlFor="rv-name">Your name</label>
-            <input id="rv-name" value={name} placeholder="How the table knows you" autoFocus
+            <label htmlFor="rv-name">{t("Your name", "Namamu")}</label>
+            <input id="rv-name" value={name} placeholder={t("How the table knows you", "Nama untuk di ulasan")} autoFocus
                    onChange={e => { setName(e.target.value); setErrs(x => ({ ...x, name: false })); }} />
-            <small className="field__err">A name, please.</small>
+            <small className="field__err">{t("A name, please.", "Nama dulu, ya.")}</small>
           </div>
           <div className="field">
-            <label htmlFor="rv-dish">What did you order?</label>
+            <label htmlFor="rv-dish">{t("What did you order?", "Kamu pesan apa?")}</label>
             <select id="rv-dish" value={dish} onChange={e => setDish(e.target.value)}>
-              <option value="">Just the room</option>
-              {app.onSale.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+              <option value="">{t("Just the room", "Cuma mampir")}</option>
+              {app.onSale.map(d => <option key={d.id} value={d.name}>{t(d.name, d.name_id)}</option>)}
             </select>
           </div>
         </div>
 
         <div className={`field${errs.text ? " err" : ""}`}>
-          <label htmlFor="rv-text">Your review</label>
-          <textarea id="rv-text" value={text} placeholder="The food, the noise, the wait - all of it helps."
+          <label htmlFor="rv-text">{t("Your review", "Ulasanmu")}</label>
+          <textarea id="rv-text" value={text} placeholder={t("The food, the noise, the wait, all of it helps.", "Makanannya, suasananya, tungguannya, semuanya membantu.")}
                     onChange={e => { setText(e.target.value); setErrs(x => ({ ...x, text: false })); }} />
-          <small className="field__err">Give us at least a sentence (12 characters).</small>
+          <small className="field__err">{t("Give us at least a sentence (12 characters).", "Tulis minimal satu kalimat (12 karakter).")}</small>
         </div>
       </div>
 
       <div className="modal__foot">
-        <button className="btn btn--ghost" onClick={app.closeModal}>Not now</button>
-        <button className="btn btn--primary" onClick={post}>Post the review</button>
+        <button className="btn btn--ghost" onClick={app.closeModal}>{t("Not now", "Nanti saja")}</button>
+        <button className="btn btn--primary" onClick={post}>{t("Post the review", "Kirim ulasan")}</button>
       </div>
     </>
   );

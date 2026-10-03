@@ -17,8 +17,12 @@ const SAFE_DATA = /^data:image\/[a-z+.-]+;base64,[a-z0-9+/=]+$/i;
 export const safeSrc = s => (SAFE_SRC.test(s) || SAFE_DATA.test(s) ? s : "");
 export const safeAvatar = s => (SAFE_DATA.test(s || "") ? s : "");
 
-export const shortDate = d => new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-export const clockTime = d => new Date(d).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+let LOCALE = "en-GB";
+export const setLocale = l => { LOCALE = l || "en-GB"; };
+
+export const shortDate = d => new Date(d).toLocaleDateString(LOCALE, { month: "short", day: "numeric", year: "numeric" });
+export const clockTime = d => new Date(d).toLocaleTimeString(LOCALE, { hour: "2-digit", minute: "2-digit" });
+export const weekday = d => new Date(d).toLocaleDateString(LOCALE, { weekday: "long" });
 
 /* Resize an uploaded picture down to a size that survives localStorage. */
 export function readAndShrink(file, max = 220) {
@@ -50,3 +54,7 @@ export function parseIngredients(text) {
     return m && /\p{Extended_Pictographic}/u.test(m[1]) ? [m[1], m[2]] : ["•", l];
   });
 }
+
+/* one label per typed line, blanks kept so a translated list lines up with the English one */
+export const ingredientLines = text =>
+  String(text || "").split("\n").map(l => parseIngredients(l)[0]?.[1] || "");

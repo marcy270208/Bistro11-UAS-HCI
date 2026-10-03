@@ -68,11 +68,11 @@ svg{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-l
 .muted{color:var(--ink-3)}
 [hidden]{display:none!important}
 
-/* ---------- scrollbar ---------- */
-::-webkit-scrollbar{width:11px;height:11px}
-::-webkit-scrollbar-track{background:var(--bg-2)}
-::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:99px;border:3px solid var(--bg-2)}
-::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+/* ---------- scrollbar: a floating thumb, never a painted track ---------- */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line-2);border:3px solid transparent;border-radius:99px;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--accent);background-clip:padding-box}
 
 /* ═══════════════ motion primitives ═══════════════ */
 [data-reveal]{
@@ -113,6 +113,7 @@ svg{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.7;stroke-l
 .icon-btn:hover{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);transform:translateY(-2px) rotate(-4deg)}
 .icon-btn svg{width:19px;height:19px}
 .icon-btn.is-on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.lang-code{font-size:.72rem;font-weight:800;letter-spacing:.08em;font-family:var(--f-body);line-height:1}
 .pip{position:absolute;top:-3px;right:-3px;min-width:19px;height:19px;padding:0 5px;border-radius:99px;
   background:var(--berry);color:#fff;font-size:11px;font-weight:700;font-family:var(--f-body);
   display:grid;place-items:center;border:2px solid var(--bg);animation:pop .4s var(--ease-out)}

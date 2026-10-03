@@ -71,8 +71,6 @@ export default function TrackOrder({ orderId }) {
   const arrived = idx === STEPS.length - 1;
   const out = order?.status === "delivering";
 
-
-
   useEffect(() => {
     if (!out || still()) return undefined;
     const id = setInterval(() => setNow(Date.now()), 240);

@@ -52,8 +52,6 @@ html[data-theme="dark"] .hero__bg{opacity:.19}
 section{position:relative}
 .sec-head{display:flex;justify-content:space-between;align-items:flex-end;gap:34px;flex-wrap:wrap;margin-bottom:34px}
 .sec-head h2,.menu h2,.gallery h2,.reviews h2{font-size:clamp(2rem,3.9vw,3.05rem);margin-top:12px}
-.sec-head__note{max-width:40ch;font-size:.92rem;color:var(--ink-2);padding-left:18px;border-left:2px solid var(--accent)}
-.sec-head__note b{color:var(--ink)}
 
 /* pillars */
 .pillars{padding:88px 0 22px}

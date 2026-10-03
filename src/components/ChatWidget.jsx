@@ -1,36 +1,62 @@
 import { useEffect, useRef, useState } from "react";
 import { useApp } from "../lib/store.jsx";
-import { t } from "../lib/i18n.js";
-import { TOPICS } from "../data/knowledge.js";
+import { TOPICS, chipText } from "../data/knowledge.js";
 import { STAFF } from "../data/biz.js";
-import { money, clockTime } from "../lib/format.js";
+import { money, clockTime, weekday } from "../lib/format.js";
+import { kitchen } from "../lib/hours.js";
 import Ico from "../lib/icons.jsx";
 import Photo from "./Photo.jsx";
 import DishDetail from "./modals/DishDetail.jsx";
 import TrackOrder from "./modals/TrackOrder.jsx";
 
-/* topics that advertise themselves as a starter question - emoji stripped off the chip */
+/* topics that advertise themselves as a starter question — emoji stripped off the chip */
 const QUICK = TOPICS.filter(t => t.chip)
   .map(t => [t.id, t.chip.replace(/^[^\p{L}\p{N}]+/u, "").trim()]);
 
+/* what a guest asks a person rather than a machine: nothing here is on the board */
+const CHEF_QUICK = [
+  ["Can you hold a table for four tonight?", "Boleh tahanin meja untuk empat orang malam ini?"],
+  ["Someone at the table has a nut allergy, is that okay?", "Satu meja ada alergi kacang, aman?"],
+  ["What do you recommend today?", "Hari ini kamu rekomendasiin apa?"]
+];
+
 /* an answer can point the guest at a section of the site */
 const GO = {
-  menu: ["menu", "See the whole board"],
-  visit: ["visit", "Where we cook"],
-  reviews: ["reviews", "Read guest reviews"],
-  gallery: ["gallery", "Look at the room"]
+  menu: ["menu", "See the whole board", "Lihat semua menu"],
+  visit: ["visit", "Where we cook", "Lihat dapur kami"],
+  reviews: ["reviews", "Read guest reviews", "Baca ulasan tamu"],
+  gallery: ["gallery", "Look at the room", "Lihat suasananya"]
 };
 
+/* chips are filed in English so a tap always reaches the right topic; only the
+   label follows the language, including the generated "Tell me about …" ones */
+const chipLabel = (c, t, menu) => {
+  const m = /^Tell me about (.+)$/.exec(c);
+  if (!m) return chipText(c, t);
+  const plate = (menu || []).find(d => d.name === m[1]);
+  return t(`Tell me about ${m[1]}`, `Ceritakan soal ${plate?.name_id || m[1]}`);
+};
+
+/* the Indonesian half, filed with the guest's message so their own bubble follows the picker */
+const chipId = (c, menu) => chipLabel(c, (en, id) => id || en, menu);
+
 function Bubble({ m, app, asks }) {
+  if (m.from === "sys") {
+    return (
+      <div className="chat__msg chat__msg--sys">
+        <p>{app.t(m.text, m.text_id)}</p>
+      </div>
+    );
+  }
   const plates = (m.dishes || []).map(id => app.dishById(id)).filter(d => d && d.available !== false);
   const go = GO[m.go];
   return (
     <div className={`chat__msg chat__msg--${m.from}`}>
       <div className="chat__bubble">
         {m.from !== "bot" && (
-          <b className="chat__by">{m.from === "chef" ? m.by || STAFF.name : "You"}</b>
+          <b className="chat__by">{m.from === "chef" ? m.by || STAFF.name : app.t("You", "Kamu")}</b>
         )}
-        <p>{m.text}</p>
+        <p>{app.t(m.text, m.text_id)}</p>
 
         {!!plates.length && (
           <div className="chat__plates">
@@ -38,10 +64,10 @@ function Bubble({ m, app, asks }) {
               <button
                 key={d.id}
                 onClick={() => app.openModal(<DishDetail dish={d} />, "modal--wide")}
-                aria-label={`Open ${d.name}`}
+                aria-label={app.t(`Open ${d.name}`, `Buka ${app.t(d.name, d.name_id)}`)}
               >
-                <Photo src={d.imgs?.[0]} alt={d.name} cat={d.cat} />
-                <span><b>{d.name}</b><em>{money(d.price)}</em></span>
+                <Photo src={d.imgs?.[0]} alt={app.t(d.name, d.name_id)} cat={d.cat} />
+                <span><b>{app.t(d.name, d.name_id)}</b><em>{money(d.price)}</em></span>
               </button>
             ))}
           </div>
@@ -49,12 +75,17 @@ function Bubble({ m, app, asks }) {
 
         {asks && !!m.chips?.length && (
           <div className="chat__asks">
-            {m.chips.map(c => <button key={c} onClick={() => app.askChat(c)}>{c}</button>)}
+            {m.chips.map(c => <button key={c} onClick={() => app.askChat(c, chipId(c, app.data.menu))}>{chipLabel(c, app.t, app.data.menu)}</button>)}
           </div>
         )}
         {asks && go && (
           <button className="chat__link" onClick={() => app.goSection(go[0])}>
-            {go[1]} <Ico name="arrow" />
+            {app.t(go[1], go[2])} <Ico name="arrow" />
+          </button>
+        )}
+        {asks && m.handoff && app.chatMode !== "chef" && (
+          <button className="chat__link" onClick={() => app.setChatMode("chef")}>
+            {app.t(`Talk to ${STAFF.name} directly`, `Bicara langsung dengan ${STAFF.name}`)} <Ico name="arrow" />
           </button>
         )}
         {m.track && (
@@ -70,8 +101,7 @@ function Bubble({ m, app, asks }) {
 
 export default function ChatWidget() {
   const app = useApp();
-  const lang = app.ui.lang;
-  const { ui } = app;
+  const { ui, t } = app;
   const msgs = app.chatThread?.msgs || [];
   const [draft, setDraft] = useState("");
   const body = useRef(null);
@@ -93,17 +123,22 @@ export default function ChatWidget() {
   }, [ui.chat]);
 
   if (ui.view !== "guest") return null;
-  if (!app.data.session) return null;
 
-  const send = text => {
+  const send = (text, label) => {
     const v = String(text || "").trim();
     if (!v) return;
     setDraft("");
-    app.askChat(v, app.ui.chatMode);
+    app.askChat(v, label);
   };
 
   const last = msgs[msgs.length - 1];
   const asked = msgs.some(m => m.from === "guest");
+  const chef = app.chatMode === "chef";
+  const at = kitchen();
+  const nextOpen = at.opensAt
+    ? (at.inDays ? `${weekday(at.opensAt)} ${clockTime(at.opensAt)}` : clockTime(at.opensAt))
+    : t("soon", "segera");
+  const waiting = chef && last?.from === "guest";
 
   return (
     <>
@@ -111,42 +146,45 @@ export default function ChatWidget() {
         className={`chat-launch${shown ? " is-tuck" : ""}`}
         onClick={app.openChat}
         aria-label={unread
-          ? `Open the live chat - ${unread} new message${unread > 1 ? "s" : ""} from the kitchen`
-          : "Open the live chat"}
+          ? t(`Open the live chat, ${unread} new message${unread > 1 ? "s" : ""} from the kitchen`, `Buka obrolan langsung, ${unread} pesan baru dari dapur`)
+          : t("Open the live chat", "Buka obrolan langsung")}
       >
         <Ico name="chat" />
-        <span>{t(lang, "chat.ask")}</span>
+        <span>{chef ? t(`Chat ${STAFF.name}`, `Chat ${STAFF.name}`) : t("Ask about the menu", "Tanya soal menu")}</span>
         {!!unread && <b className="chat-launch__pip">{unread}</b>}
       </button>
 
       <section
         className={`chat${ui.chatOut ? " is-out" : ""}`}
         hidden={!shown}
-        aria-label="Live chat with Bistro Eleven"
+        aria-label={t("Live chat with Bistro Eleven", "Obrolan langsung dengan Bistro Eleven")}
       >
         <header className="chat__head">
-          <span className="chat__ava" aria-hidden="true">🤖</span>
+          <span className="chat__ava" aria-hidden="true">{chef ? "👨‍🍳" : "🤖"}</span>
           <div className="chat__who">
-            <b>Bistro Eleven assistant</b>
-            <span className="chat__state"><i /> answers now · {STAFF.name} reads the board</span>
+            <b>{chef ? STAFF.name : t("Bistro Eleven assistant", "Asisten Bistro Eleven")}</b>
+            {chef ? (
+              <span className={`chat__state${at.open ? "" : " is-shut"}`}>
+                <i />
+                {at.open
+                  ? t(`At the pass until ${clockTime(at.closesAt)}`, `Ada di pass sampai ${clockTime(at.closesAt)}`)
+                  : t(`Kitchen closed, opens ${nextOpen}`, `Dapur tutup, buka ${nextOpen}`)}
+              </span>
+            ) : (
+              <span className="chat__state"><i /> {t("answers now", "siap menjawab")} · {STAFF.name} {t("reads the board", "ikut memantau")}</span>
+            )}
           </div>
-          <button className="chat__x" onClick={app.closeChat} aria-label="Close the chat">
+          <button className="chat__x" onClick={app.closeChat} aria-label={t("Close the chat", "Tutup obrolan")}>
             <Ico name="close" />
           </button>
-                </header>
-        
-        <div style={{ display: "flex", gap: "0.5rem", padding: "0.5rem 1rem", borderBottom: "1px solid var(--line-1)" }}>
-          <button 
-            style={{ flex: 1, padding: "0.5rem", borderRadius: "20px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", fontSize: "0.85rem", fontWeight: "600", transition: "0.2s", background: ui.chatMode === "bot" ? "var(--accent-strong)" : "transparent", color: ui.chatMode === "bot" ? "var(--ink-dark)" : "var(--ink-2)", border: "1px solid " + (ui.chatMode === "bot" ? "var(--accent-strong)" : "var(--line-2)") }} 
-            onClick={() => app.toggleChatMode("bot")}
-          >
-            <Ico name="chat" /> Assistant
+        </header>
+
+        <div className="chat__modes" role="group" aria-label={t("Who you are talking to", "Kamu sedang bicara dengan siapa")}>
+          <button type="button" className={chef ? "" : "is-on"} aria-pressed={!chef} onClick={() => app.setChatMode("bot")}>
+            <Ico name="chat" /> {t("Assistant", "Asisten")}
           </button>
-          <button 
-            style={{ flex: 1, padding: "0.5rem", borderRadius: "20px", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem", fontSize: "0.85rem", fontWeight: "600", transition: "0.2s", background: ui.chatMode === "chef" ? "var(--accent-strong)" : "transparent", color: ui.chatMode === "chef" ? "var(--ink-dark)" : "var(--ink-2)", border: "1px solid " + (ui.chatMode === "chef" ? "var(--accent-strong)" : "var(--line-2)") }} 
-            onClick={() => app.toggleChatMode("chef")}
-          >
-            <Ico name="user" /> Ask the chef
+          <button type="button" className={chef ? "is-on" : ""} aria-pressed={chef} onClick={() => app.setChatMode("chef")}>
+            <Ico name="user" /> {t("Ask the chef", "Tanya chef")}
           </button>
         </div>
 
@@ -155,16 +193,26 @@ export default function ChatWidget() {
             {msgs.map(m => <Bubble key={m.id} m={m} app={app} asks={m === last} />)}
             {ui.chatTyping && (
               <div className="chat__msg chat__msg--bot">
-                <div className="chat__bubble chat__bubble--typing" aria-label="The assistant is typing">
+                <div className="chat__bubble chat__bubble--typing" aria-label={t("The assistant is typing", "Asisten sedang mengetik")}>
                   <i /><i /><i />
                 </div>
               </div>
+            )}
+            {waiting && (
+              <p className="chat__wait">
+                <i />
+                {at.open
+                  ? t(`Sent ${clockTime(last.at)}, waiting for ${STAFF.name} to reply`, `Terkirim ${clockTime(last.at)}, menunggu ${STAFF.name} balas`)
+                  : t(`Saved on the board, the kitchen opens ${nextOpen}`, `Tersimpan di papan, dapur buka ${nextOpen}`)}
+              </p>
             )}
           </div>
 
           {!asked && (
             <div className="chat__quick">
-              {QUICK.map(([id, q]) => <button key={id} onClick={() => send(q)}>{q}</button>)}
+              {chef
+                ? CHEF_QUICK.map(([en, id]) => <button key={en} onClick={() => send(en, id)}>{t(en, id)}</button>)
+                : QUICK.map(([id, q]) => <button key={id} onClick={() => send(q, chipId(q, app.data.menu))}>{chipLabel(q, t, app.data.menu)}</button>)}
             </div>
           )}
         </div>
@@ -179,15 +227,19 @@ export default function ChatWidget() {
               type="text"
               value={draft}
               onChange={e => setDraft(e.target.value)}
-              placeholder="Dish, allergen, price, hours…"
+              placeholder={chef
+                ? t(`Message ${STAFF.name}…`, `Pesan untuk ${STAFF.name}…`)
+                : t("Dish, allergen, price, hours…", "Hidangan, alergen, harga, jam buka…")}
               autoComplete="off"
-              aria-label="Message the assistant"
+              aria-label={chef ? t("Message the chef", "Kirim pesan ke chef") : t("Message the assistant", "Kirim pesan ke asisten")}
             />
-            <button className="chat__send" type="submit" disabled={!draft.trim()} aria-label="Send message">
+            <button className="chat__send" type="submit" disabled={!draft.trim()} aria-label={t("Send message", "Kirim")}>
               <Ico name="send" />
             </button>
           </form>
-          <p className="chat__note">It reads the live menu - nothing here touches your basket.</p>
+          <p className="chat__note">{chef
+            ? t(`${STAFF.name} answers between services, nothing is written for them here.`, `${STAFF.name} balas di sela jam masak, tidak ada yang ditulis otomatis untuknya di sini.`)
+            : t("It reads the live menu, nothing here touches your basket.", "Ia membaca menu langsung, semuanya di sini tidak mengubah keranjangmu.")}</p>
         </footer>
       </section>
     </>

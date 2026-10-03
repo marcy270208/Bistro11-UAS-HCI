@@ -5,12 +5,11 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORIES, MENU, STATUS_FLOW } from "../data/menu.js";
 import { DELIVERY_FEE, FREE_OVER, PICKUP_FEE, PROMOS, SEED_REVIEWS, SERVICE_RATE, STAFF, TAX_RATE } from "../data/biz.js";
-import { VISITOR_THREAD } from "../data/knowledge.js";
 import { answer, opening } from "./assistant.js";
-import { defaults, emptyVault, loadState, saveState } from "./storage.js";
-import { money, r0, uid } from "./format.js";
-import { t as i18n_t } from "./i18n.js";
-import { supabase } from "./supabase.js";
+import { defaults, emptyVault, loadState, saveState, threadKey } from "./storage.js";
+import { CAT_ID, LANGS, LOCALE, TAG_ID, makeT } from "./i18n.js";
+import { syncThemeColor } from "./pwa.js";
+import { money, r0, setLocale, uid } from "./format.js";
 
 const Ctx = createContext(null);
 export const useApp = () => {
@@ -19,12 +18,30 @@ export const useApp = () => {
   return v;
 };
 
+/* the assistant is run twice per question, once for each half of a pair */
+const EN_ONLY = en => en;
+const ID_ONLY = (en, id) => id || en;
+
+/* said out loud in the transcript, so the guest knows who is on the line from then on */
+const HANDOFF = {
+  chef: [
+    `This one goes to ${STAFF.name}. The assistant has stepped back, so a reply arrives when the chef reads the board.`,
+    `Pesan ini sampai ke ${STAFF.name}. Asistennya mundur, jadi balasannya datang saat chef membaca papan.`
+  ],
+  bot: [
+    `The assistant is back on the line. ${STAFF.name} still reads everything you wrote here.`,
+    `Asistennya kembali menemani. ${STAFF.name} tetap membaca semua yang kamu tulis di sini.`
+  ]
+};
+
 /* prefix-first matching: one letter is enough to surface a dish */
 function matchDish(d, q) {
   if (!q) return { hit: true, exact: true };
-  const words = `${d.name} ${(d.tags || []).join(" ")} ${d.cat}`.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const tags = (d.tags || []).join(" ") + " " + (d.tags || []).map(x => TAG_ID[x] || "").join(" ");
+  const words = `${d.name} ${d.name_id || ""} ${tags} ${d.cat} ${CAT_ID[d.cat] || ""}`.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
   if (words.some(w => w.startsWith(q))) return { hit: true, exact: true };
-  if (d.name.toLowerCase().includes(q) || d.desc.toLowerCase().includes(q)) return { hit: true, exact: false };
+  const text = `${d.name} ${d.name_id || ""} ${d.desc || ""} ${d.desc_id || ""}`.toLowerCase();
+  if (text.includes(q)) return { hit: true, exact: false };
   return { hit: false, exact: false };
 }
 
@@ -46,31 +63,26 @@ const syncVault = d => {
   v.wish = [...d.wish];
 };
 
-/* one thread per browser: the guest panel and the chef desk read the same list */
-const labelThread = d => {
-  const t = d.chats.find(c => c.id === VISITOR_THREAD);
-  if (!t) return null;
-  const s = d.session;
-  if (s?.kind === "user") {
-    const a = d.accounts.find(x => x.email.toLowerCase() === String(s.email).toLowerCase());
-    t.name = a?.name || "Guest";
-    t.email = s.email;
-  } else if (s?.kind === "staff") {
-    t.name = `${STAFF.name} · preview`;
-    t.email = "";
+/* the thread this browser is live in: one per account, one shared anonymous one */
+const ensureThread = d => {
+  const user = d.session?.kind === "user" ? String(d.session.email) : "";
+  const id = threadKey(d.session);
+  const name = user
+    ? (d.accounts.find(a => a.email.toLowerCase() === user.toLowerCase())?.name || "Guest")
+    : d.session?.kind === "staff" ? `${STAFF.name} · preview` : "Guest";
+  let t = d.chats.find(c => c.id === id)
+    || (user && d.chats.find(c => (c.email || "").toLowerCase() === user.toLowerCase()));
+  if (!t) {
+    t = { id, name, email: user, mode: "bot", unread: { guest: 0, chef: 0 }, updated: new Date().toISOString(), msgs: [] };
+    d.chats.unshift(t);
   } else {
-    t.name = t.name === `${STAFF.name} · preview` ? "Guest" : t.name || "Guest";
+    t.name = name;
+    t.email = user;
   }
   return t;
 };
 
-const ensureThread = d => {
-  if (!d.chats.some(c => c.id === VISITOR_THREAD))
-    d.chats.unshift({ id: VISITOR_THREAD, name: "Guest", email: "", unread: { guest: 0, chef: 0 }, updated: new Date().toISOString(), msgs: [] });
-  return d.chats.find(c => c.id === VISITOR_THREAD);
-};
-
-const threadOf = (d, id) => (id === VISITOR_THREAD ? ensureThread(d) : d.chats.find(c => c.id === id) || null);
+const threadOf = (d, id) => (id === threadKey(d.session) ? ensureThread(d) : d.chats.find(c => c.id === id) || null);
 
 export function AppProvider({ children }) {
   const [data, setData] = useState(loadState);
@@ -79,7 +91,7 @@ export function AppProvider({ children }) {
     authTab: "in", authReason: "",
     drawer: false, drawerOut: false, search: false,
     chat: false, chatOut: false, chatTyping: false,
-    query: "", cat: "All", sort: "featured", wishOnly: false, adminTab: "orders", lang: "en"
+    query: "", cat: "All", sort: "featured", wishOnly: false, adminTab: "orders"
   }));
   const [modal, setModal] = useState(null);
   const [tracker, setTracker] = useState(null);
@@ -87,33 +99,7 @@ export function AppProvider({ children }) {
   const authFrom = useRef(0);
   const timers = useRef({ modal: 0, drawer: 0, chat: 0, chatOut: 0 });
 
-
-  // Sync from Supabase on first load
-    useEffect(() => {
-      supabase.from('app_data').select('data').eq('id', 'bistro').single().then(({ data: sbData, error }) => {
-        if (!error && sbData?.data) {
-          setData(prev => {
-            if (prev.lastUpdated && (!sbData.data.lastUpdated || prev.lastUpdated >= sbData.data.lastUpdated)) {
-              saveState(prev);
-              return prev;
-            }
-            const merged = { 
-              ...prev, 
-              ...sbData.data,
-              session: prev.session,
-              cart: prev.cart,
-              wish: prev.wish
-            };
-            saveState(merged);
-            return merged;
-          });
-        }
-      });
-    }, []);
-
   const patchUi = useCallback(p => setUi(u => ({ ...u, ...p })), []);
-  
-  const t = useCallback((key, fallback) => i18n_t(ui.lang, key, fallback), [ui.lang]);
 
   /* every mutation gets a private copy, like the old imperative `S` */
   const write = useCallback(fn => setData(prev => { const next = structuredClone(prev); fn(next); next.lastUpdated = Date.now(); return next; }), []);
@@ -121,30 +107,60 @@ export function AppProvider({ children }) {
   /* ── toasts ── */
   const toast = useCallback((msg, icon = "✅") => {
     const id = uid("t");
-    setToasts(t => [...t, { id, msg, icon }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2600);
+    setToasts(list => [...list, { id, msg, icon }]);
+    setTimeout(() => setToasts(list => list.filter(x => x.id !== id)), 2600);
   }, []);
 
-    /* ── persistence + theme ── */
+  const t = useMemo(() => makeT(data.lang), [data.lang]);
+
+
+  // Sync from Supabase on first load
   useEffect(() => {
-    write(d => {
-      const len = d.accounts.length;
-      d.accounts = d.accounts.filter(a => !a.email.includes("you@example"));
-      // if any got removed, syncVault just in case
-      if (d.accounts.length !== len) {
-         if (d.session && d.session.email.includes("you@example")) {
-             d.session = null;
-         }
+    supabase.from('app_data').select('data').eq('id', 'bistro').single().then(({ data: sbData, error }) => {
+      if (!error && sbData?.data) {
+        setData(prev => {
+          if (prev.lastUpdated && (!sbData.data.lastUpdated || prev.lastUpdated >= sbData.data.lastUpdated)) {
+            saveState(prev); return prev;
+          }
+          const merged = { ...prev, ...sbData.data, session: prev.session, cart: prev.cart, wish: prev.wish };
+          saveState(merged); return merged;
+        });
       }
     });
-  }, [write]);
+  }, []);
 
+  /* ── persistence + theme ── */
   useEffect(() => {
     if (!saveState(data)) {
-      toast("Storage is full - remove your profile photo to keep saving.", "⚠️");
+      toast(t("Storage is full. Remove your profile photo to keep saving.",
+        "Penyimpanan penuh. Hapus foto profil supaya bisa terus menyimpan."), "⚠️");
     }
-  }, [data, toast]);
-  useEffect(() => { document.documentElement.dataset.theme = data.theme; }, [data.theme]);
+  }, [data, toast, t]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = data.theme;
+    syncThemeColor(data.theme);
+  }, [data.theme]);
+  useEffect(() => {
+    const code = LANGS.some(l => l.code === data.lang) ? data.lang : "en";
+    const id = code === "id";
+    document.documentElement.lang = id ? "id" : "en";
+    document.title = id
+      ? "Bistro Eleven · Hidangan Musiman & Malam yang Lambat"
+      : "Bistro Eleven · Seasonal Plates & Slow Evenings";
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.content = id
+      ? "Bistro Eleven: dapur tetangga yang hangat, menyajikan hidangan panggang kayu api, bakery segar, dan minuman batch kecil."
+      : "Bistro Eleven: a warm neighbourhood kitchen serving wood-fired mains, fresh bakery and small-batch drinks.";
+    const manifest = document.querySelector('link[rel="manifest"]');
+    if (manifest) manifest.href = id ? "/manifest.id.webmanifest" : "/manifest.webmanifest";
+    setLocale(LOCALE[code]);
+  }, [data.lang]);
+
+  const setLang = useCallback(next => {
+    const code = LANGS.some(l => l.code === next) ? next : "en";
+    write(d => { d.lang = code; });
+    toast(code === "id" ? "Bahasa Indonesia aktif" : "Switched back to English", code === "id" ? "🇮🇩" : "🇬🇧");
+  }, [write, toast]);
 
   /* ── modal + drawer chrome ── */
   const openModal = useCallback((node, cls = "") => {
@@ -194,13 +210,16 @@ export function AppProvider({ children }) {
     if (me) return true;
     if (isStaff) {
       toast(ui.view === "guest"
-        ? "Preview is read-only - the kitchen can look but not order. Use a guest account to test checkout."
-        : "You're in the kitchen - open the guest site to see the board.", "👨‍🍳");
+        ? t("Preview is read-only. The kitchen can look but not order. Use a guest account to test checkout.",
+            "Pratinjau hanya untuk melihat. Dapur boleh lihat tapi tidak bisa memesan. Pakai akun tamu untuk mencoba checkout.")
+        : t("You're in the kitchen. Open the guest site to see the board.",
+            "Kamu sedang di dapur. Buka situs tamu untuk melihat papannya."), "👨‍🍳");
       return false;
     }
-    showAuth(reason || "Sign in or create an account to put plates on your order.");
+    showAuth(reason || t("Sign in or create an account to put plates on your order.",
+      "Masuk atau buat akun untuk mulai menambahkan pesanan."));
     return false;
-  }, [me, isStaff, ui.view, toast, showAuth]);
+  }, [me, isStaff, ui.view, toast, showAuth, t]);
 
   const beginSession = useCallback((kind, email) => {
     write(d => {
@@ -209,43 +228,32 @@ export function AppProvider({ children }) {
       else { d.cart = {}; d.wish = []; }
     });
     closeModal();
+    clearTimeout(timers.current.chat); clearTimeout(timers.current.chatOut);
     setUi(u => ({
       ...u,
       view: kind === "staff" ? "admin" : "guest",
       drawer: false, drawerOut: false, search: false,
+      chat: false, chatOut: false, chatTyping: false,
       wishOnly: false, cat: "All", query: ""
     }));
     window.scrollTo(0, kind === "staff" ? 0 : authFrom.current);
   }, [write, closeModal]);
 
   const endSession = useCallback(quiet => {
-    write(d => { 
-      syncVault(d); 
-      d.session = null; 
-      d.cart = {}; 
-      d.wish = []; 
-      const t = d.chats.find(c => c.id === VISITOR_THREAD);
-      if (t) { t.msgs = []; t.unread = { guest: 0, chef: 0 }; t.name = "Guest"; t.email = ""; }
-    });
+    write(d => { syncVault(d); d.session = null; d.cart = {}; d.wish = []; });
     closeDrawer(); closeModal();
-    setUi(u => ({ ...u, view: "guest", drawer: false, drawerOut: false, wishOnly: false, cat: "All", query: "" }));
-    if (!quiet) { toast("Signed out - your basket is saved with your account.", "👋"); window.scrollTo(0, 0); }
-  }, [write, closeDrawer, closeModal, toast]);
+    clearTimeout(timers.current.chat); clearTimeout(timers.current.chatOut);
+    setUi(u => ({ ...u, view: "guest", drawer: false, drawerOut: false, chat: false, chatOut: false, chatTyping: false, wishOnly: false, cat: "All", query: "" }));
+    if (!quiet) {
+      toast(t("Signed out. Your basket is saved with your account.",
+        "Kamu sudah keluar. Keranjangmu tersimpan di akun."), "👋");
+      window.scrollTo(0, 0);
+    }
+  }, [write, closeDrawer, closeModal, toast, t]);
 
   const createAccount = useCallback(account => {
     write(d => { d.accounts.push(account); vaultOf(d, account.email); });
   }, [write]);
-
-  const deleteAccount = useCallback(email => {
-    write(d => {
-      d.accounts = d.accounts.filter(a => a.email.toLowerCase() !== email.toLowerCase());
-      delete d.vault[email.toLowerCase()];
-      if (d.session?.email?.toLowerCase() === email.toLowerCase()) {
-         d.session = null;
-      }
-    });
-    toast("Account deleted", "🗑️");
-  }, [write, toast]);
 
   const updateMe = useCallback(patch => {
     write(d => {
@@ -260,6 +268,8 @@ export function AppProvider({ children }) {
         const moved = d.vault[oldKey];
         if (moved) { delete d.vault[oldKey]; d.vault[nextEmail.toLowerCase()] = moved; }
         d.session.email = nextEmail;
+        const thread = d.chats.find(c => c.id === `c-${oldKey}`);
+        if (thread) { thread.id = `c-${nextEmail.toLowerCase()}`; thread.email = nextEmail; }
       }
       syncVault(d);
     });
@@ -267,9 +277,11 @@ export function AppProvider({ children }) {
 
   const setTheme = useCallback(next => {
     write(d => { d.theme = next; });
-    toast(next === "dark" ? "Evening service - dark mode" : "Daylight seating - light mode",
+    toast(next === "dark"
+      ? t("Evening service. Dark mode", "Sore hari. Mode gelap")
+      : t("Daylight seating. Light mode", "Duduk siang. Mode terang"),
       next === "dark" ? "🌙" : "☀️");
-  }, [write, toast]);
+  }, [write, toast, t]);
 
   /* ── menu reads ── */
   const dishById = useCallback(id => data.menu.find(d => d.id === id), [data.menu]);
@@ -300,15 +312,16 @@ export function AppProvider({ children }) {
     }
     const sorters = {
       "price-asc": (a, b) => a.price - b.price, "price-desc": (a, b) => b.price - a.price,
-      rating: (a, b) => b.rating - a.rating, az: (a, b) => a.name.localeCompare(b.name)
+      rating: (a, b) => b.rating - a.rating, az: (a, b) => t(a.name, a.name_id).localeCompare(t(b.name, b.name_id))
     };
     const s = sorters[ui.sort];
     return { list: s ? [...list].sort(s) : [...list], exact };
-  }, [onSale, ui.cat, ui.wishOnly, ui.query, ui.sort, data.wish]);
+  }, [onSale, ui.cat, ui.wishOnly, ui.query, ui.sort, data.wish, t]);
 
   /* ── basket + wishlist ── */
   const setQty = useCallback((id, delta) => {
-    if (!asCustomer("Sign in to put this plate on your order.")) return;
+    if (!asCustomer(t("Sign in to put this plate on your order.",
+      "Masuk dulu untuk menambahkan hidangan ini ke pesanan."))) return;
     write(d => {
       d.cart[id] = Math.max(0, (d.cart[id] || 0) + delta);
       if (!d.cart[id]) delete d.cart[id];
@@ -316,12 +329,14 @@ export function AppProvider({ children }) {
     });
     if (delta > 0) {
       const dish = data.menu.find(x => x.id === id);
-      if (dish) toast(`${dish.name} added - ${money(dish.price)}`, "🛒");
+      if (dish) toast(t(`${dish.name} added · ${money(dish.price)}`,
+        `${dish.name_id || dish.name} masuk keranjang · ${money(dish.price)}`), "🛒");
     }
-  }, [asCustomer, write, toast, data.menu]);
+  }, [asCustomer, write, toast, data.menu, t]);
 
   const toggleWish = useCallback(id => {
-    if (!asCustomer("Sign in to save dishes - your hearts live in your account.")) return false;
+    if (!asCustomer(t("Sign in to save dishes. Your hearts live in your account.",
+      "Masuk dulu untuk menyimpan hidangan. Favorit tersimpan di akunmu."))) return false;
     let nowOn = false;
     write(d => {
       const i = d.wish.indexOf(id);
@@ -330,20 +345,24 @@ export function AppProvider({ children }) {
       syncVault(d);
     });
     const dish = data.menu.find(x => x.id === id);
-    toast(nowOn ? `Saved ${dish?.name} to your wishlist` : `Removed ${dish?.name}`, nowOn ? "❤️" : "🤍");
+    const name = dish ? t(dish.name, dish.name_id) : "";
+    toast(nowOn
+      ? t(`Saved ${name} to your wishlist`, `${name} masuk favoritmu`)
+      : t(`Removed ${name}`, `${name} dihapus dari favorit`), nowOn ? "❤️" : "🤍");
     return nowOn;
-  }, [asCustomer, write, toast, data.menu]);
+  }, [asCustomer, write, toast, data.menu, t]);
 
   const clearWish = useCallback(() => {
     write(d => { d.wish = []; syncVault(d); });
     setUi(u => ({ ...u, wishOnly: false }));
-    toast("Wishlist cleared", "🤍");
-  }, [write, toast]);
+    toast(t("Wishlist cleared", "Favorit dikosongkan"), "🤍");
+  }, [write, toast, t]);
 
   const showSavedOnly = useCallback(on => {
     setUi(u => ({ ...u, wishOnly: on, cat: "All" }));
-    if (on && !data.wish.length) toast("No saved dishes yet - tap the heart on any plate", "🤍");
-  }, [data.wish.length]);
+    if (on && !data.wish.length)
+      toast(t("No saved dishes yet. Tap the heart on any plate", "Belum ada hidangan favorit. Ketuk hati di kartu mana saja"), "🤍");
+  }, [data.wish.length, toast, t]);
 
   const resetFilters = useCallback(() => {
     setUi(u => ({ ...u, cat: "All", wishOnly: false, query: "" }));
@@ -362,40 +381,19 @@ export function AppProvider({ children }) {
 
   const placeOrder = useCallback(order => {
     write(d => {
-      // Mark it as synced initially so manual sync doesn't duplicate it
-      order.synced = true;
       d.orders.unshift(order);
       const email = d.session?.kind === "user" ? d.session.email : null;
       const acc = email && d.accounts.find(a => a.email.toLowerCase() === email.toLowerCase());
       if (acc) {
         for (const [k, v] of Object.entries({ name: order.name, phone: order.phone, address: order.address }))
-          if (v && v !== "-") acc[k] = v;
+          if (v && v !== "—") acc[k] = v;
       }
       d.cart = {};
       syncVault(d);
     });
     setTracker(order);
-    
-    // Auto-sync to Google Sheets in the background
-    const payload = {
-      orders: [{
-        id: order.created ? new Date(order.created).toLocaleString() : "-",
-        date: order.id,
-        name: order.name || "Guest",
-        type: order.type,
-        status: order.type === "table" ? order.table : (order.address || "-"),
-        total: order.items.map(i => `${i.qty}x ${i.name}`).join("; "),
-        items: order.notes || "-",
-        notes: money(order.totals?.total || 0)
-      }]
-    };
-    fetch("https://script.google.com/macros/s/AKfycbxUGAViaisAmmwHqZV4JKeW0wqCE4_BUhqUoGA6CNGdr47wEMQKD46HrJjR8mzktyqjdw/exec", {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload)
-    }).catch(e => console.error("Sheet sync failed", e));
-    
+    const payload = { orders: [{ id: order.created ? new Date(order.created).toLocaleString() : "-", date: order.id, name: order.name || "Guest", type: order.type, status: order.type === "table" ? order.table : (order.address || "-"), total: order.items.map(i => `${i.qty}x ${i.name}`).join("; "), items: order.notes || "-", notes: order.totals?.total || 0 }] };
+    fetch("https://script.google.com/macros/s/AKfycbxUGAViaisAmmwHqZV4JKeW0wqCE4_BUhqUoGA6CNGdr47wEMQKD46HrJjR8mzktyqjdw/exec", { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain" }, body: JSON.stringify(payload) }).catch(() => {});
   }, [write]);
 
   const advanceOrder = useCallback(id => {
@@ -404,37 +402,25 @@ export function AppProvider({ children }) {
       if (!o) return;
       o.status = STATUS_FLOW[Math.min(STATUS_FLOW.indexOf(o.status) + 1, STATUS_FLOW.length - 1)];
     });
-    // Removed toast because it would be annoying if it auto-advances
-  }, [write]);
+    const o = data.orders.find(x => x.id === id);
+    if (o) toast(t(`${o.id} moved on`, `${o.id} sudah maju`), "🔔");
+  }, [write, data.orders, toast, t]);
 
-  const setOrderStatus = useCallback((id, status) => {
+  const printOrder = useCallback(id => {
+    write(d => { const o = d.orders.find(x => x.id === id); if (o) o.printed = true; });
+    toast(t("Sent to the printer at the pass", "Tiketnya sudah keluar di printer dapur"), "🖨️");
+  }, [write, toast, t]);
+
+  /* the guest signs for the run; the chef's board sees the same ticket go served */
+  const receiveOrder = useCallback(id => {
     write(d => {
       const o = d.orders.find(x => x.id === id);
-      if (o) o.status = status;
+      if (!o) return;
+      o.status = "done";
+      o.receivedAt = Date.now();
     });
-  }, [write]);
-
-  // Global Demo Simulation: automatically advance active orders
-  useEffect(() => {
-    const activeOrders = data.orders.filter(o => o.status !== "done" && o.status !== "cancelled");
-    if (activeOrders.length === 0) return;
-    
-    const timeouts = [];
-    activeOrders.forEach(o => {
-      // 12 seconds for delivering animation, 3.5 seconds for kitchen stages
-      const delay = o.status === "delivering" ? 12000 : 3500;
-      timeouts.push(setTimeout(() => {
-        advanceOrder(o.id);
-      }, delay));
-    });
-    
-    return () => timeouts.forEach(clearTimeout);
-  }, [data.orders, advanceOrder]);
-
-  const emailOrder = useCallback(id => {
-    write(d => { const o = d.orders.find(x => x.id === id); if (o) o.emailed = true; });
-    toast("Receipt sent to your email", "📧");
-  }, [write, toast]);
+    toast(t(`${id} is with you. Enjoy it while it is hot.`, `${id} sudah kamu terima. Selamat menikmati.`), "✅");
+  }, [write, toast, t]);
 
   /* ── reviews ── */
   const addReview = useCallback(r => write(d => { d.reviews.unshift(r); }), [write]);
@@ -444,24 +430,41 @@ export function AppProvider({ children }) {
   const deleteReview = useCallback(id => write(d => { d.reviews = d.reviews.filter(x => x.id !== id); }), [write]);
 
   /* ── live chat ── */
-  const chatThread = useMemo(() => data.chats.find(c => c.id === VISITOR_THREAD) || null, [data.chats]);
+  const chatId = useMemo(() => {
+    const key = threadKey(data.session);
+    const email = data.session?.kind === "user" ? String(data.session.email).toLowerCase() : "";
+    const own = data.chats.find(c => c.id === key)
+      || (email && data.chats.find(c => (c.email || "").toLowerCase() === email));
+    return own?.id || key;
+  }, [data.chats, data.session]);
+  const chatThread = useMemo(() => data.chats.find(c => c.id === chatId) || null, [data.chats, chatId]);
+  const chatMode = chatThread?.mode === "chef" ? "chef" : "bot";
 
   const pushChat = useCallback((id, msg, unread) => write(d => {
-    const t = id === VISITOR_THREAD ? labelThread(d) : d.chats.find(c => c.id === id);
-    if (!t) return;
-    t.unread ||= { guest: 0, chef: 0 };
+    const th = threadOf(d, id);
+    if (!th) return;
+    th.unread ||= { guest: 0, chef: 0 };
     const now = new Date().toISOString();
-    t.msgs.push({ id: uid("m"), chips: [], dishes: [], ...msg, at: now });
-    if (unread) t.unread[unread] = (t.unread[unread] || 0) + 1;
-    t.updated = now;
+    th.msgs.push({ id: uid("m"), chips: [], dishes: [], ...msg, at: now });
+    if (unread) th.unread[unread] = (th.unread[unread] || 0) + 1;
+    th.updated = now;
   }), [write]);
 
+  /* the assistant is asked twice, once per language, so a transcript that is
+     already on disk keeps following the picker instead of freezing in one tongue */
   const openChat = useCallback(() => {
     setUi(u => ({ ...u, chat: true, chatOut: false }));
     write(d => {
-      const t = ensureThread(d);
-      if (!t.msgs.length) t.msgs.push({ id: uid("m"), ...opening(d.menu) });
-      t.unread.guest = 0;
+      const th = ensureThread(d);
+      if (!th.msgs.length) {
+        const en = opening(d.menu, EN_ONLY);
+        const id = opening(d.menu, ID_ONLY);
+        th.msgs.push({
+          id: uid("m"), ...en, text_id: id.text,
+          chips: en.chips, at: new Date().toISOString()
+        });
+      }
+      th.unread.guest = 0;
     });
   }, [write]);
 
@@ -471,69 +474,75 @@ export function AppProvider({ children }) {
     timers.current.chatOut = setTimeout(() => setUi(u => ({ ...u, chat: false, chatOut: false })), 320);
   }, []);
 
-  const askChat = useCallback((text, mode = "bot") => {
-    const t = String(text || "").trim();
-    if (!t) return;
-    pushChat(VISITOR_THREAD, { from: "guest", text: t }, "chef");
-    
-    if (mode === "chef") {
-      return; // Do not trigger bot answer
-    }
-    
+  const askChat = useCallback((text, textId) => {
+    const msg = String(text || "").trim();
+    if (!msg) return;
+    pushChat(chatId, { from: "guest", text: msg, text_id: String(textId || "").trim() }, "chef");
+    /* a guest who asked for the chef does not get a machine talking over them */
+    if (chatMode === "chef") return;
     setUi(u => ({ ...u, chatTyping: true }));
     clearTimeout(timers.current.chat);
     timers.current.chat = setTimeout(() => {
-      const a = answer(t, data.menu);
-      setUi(u => ({ ...u, chatTyping: false, ...(a.fallback ? { chatMode: "chef" } : {}) }));
-      pushChat(VISITOR_THREAD, { from: "bot", text: a.text, chips: a.chips || [], dishes: a.dishes || [], go: a.go || "" });
-    }, 700 + Math.min(900, t.length * 14));
-  }, [pushChat, data.menu]);
+      const en = answer(msg, data.menu, EN_ONLY, myOrders);
+      const id = answer(msg, data.menu, ID_ONLY, myOrders);
+      setUi(u => ({ ...u, chatTyping: false }));
+      pushChat(chatId, {
+        from: "bot", text: en.text, text_id: id.text,
+        chips: en.chips || [], dishes: en.dishes || [], go: en.go || "", track: en.track || "",
+        handoff: !!en.handoff
+      });
+    }, 700 + Math.min(900, msg.length * 14));
+  }, [pushChat, chatId, chatMode, data.menu, myOrders]);
 
-  const toggleChatMode = useCallback(mode => {
-    setUi(u => {
-      if (u.chatMode === mode) return u;
-      
-      const msg = mode === "chef" 
-        ? `This one goes to ${STAFF.name}. The assistant has stepped back, so a reply arrives when the chef reads the board.`
-        : `The assistant is back on the line. ${STAFF.name} still reads everything you wrote here.`;
-        
-      pushChat(VISITOR_THREAD, { from: "bot", text: msg });
-      
-      return { ...u, chatMode: mode };
+  const setChatMode = useCallback(next => {
+    const mode = next === "chef" ? "chef" : "bot";
+    clearTimeout(timers.current.chat);
+    setUi(u => (u.chatTyping ? { ...u, chatTyping: false } : u));
+    write(d => {
+      const th = ensureThread(d);
+      if ((th.mode || "bot") === mode) return;
+      th.mode = mode;
+      const now = new Date().toISOString();
+      const line = HANDOFF[mode];
+      th.msgs.push({ id: uid("m"), from: "sys", text: line[0], text_id: line[1], chips: [], dishes: [], at: now });
+      th.unread ||= { guest: 0, chef: 0 };
+      if (mode === "chef") th.unread.chef = (th.unread.chef || 0) + 1;
+      th.updated = now;
     });
-  }, [pushChat]);
+  }, [write]);
 
   const chefReply = useCallback((id, text) => {
     const msg = String(text || "").trim();
     if (!msg) return;
     let who = "";
     write(d => {
-      const t = threadOf(d, id);
-      if (!t) return;
-      who = t.name || "the guest";
-      t.unread ||= { guest: 0, chef: 0 };
+      const th = threadOf(d, id);
+      if (!th) return;
+      who = th.name || "";
+      th.unread ||= { guest: 0, chef: 0 };
       const now = new Date().toISOString();
-      t.msgs.push({ id: uid("m"), from: "chef", text: msg, by: STAFF.name, chips: [], dishes: [], at: now });
-      t.unread.guest = (t.unread.guest || 0) + 1;
-      t.updated = now;
+      th.msgs.push({ id: uid("m"), from: "chef", text: msg, by: STAFF.name, chips: [], dishes: [], at: now });
+      th.unread.guest = (th.unread.guest || 0) + 1;
+      th.updated = now;
     });
-    if (who) toast(`Replied to ${who} - it lands in their chat panel`, "💬");
-  }, [write, toast]);
+    if (who) toast(t(`Replied to ${who}. It lands in their chat panel`,
+      `Balasan untuk ${who} sudah masuk ke panel chat mereka`), "💬");
+  }, [write, toast, t]);
 
   const readChat = useCallback((id, side) => write(d => {
-    const t = threadOf(d, id);
-    if (!t) return;
-    t.unread ||= { guest: 0, chef: 0 };
-    t.unread[side] = 0;
+    const th = threadOf(d, id);
+    if (!th) return;
+    th.unread ||= { guest: 0, chef: 0 };
+    th.unread[side] = 0;
   }), [write]);
 
   const clearChat = useCallback(id => {
     write(d => {
-      const t = threadOf(d, id);
-      if (t) { t.msgs = []; t.unread = { guest: 0, chef: 0 }; }
+      const th = threadOf(d, id);
+      if (th) { th.msgs = []; th.unread = { guest: 0, chef: 0 }; }
     });
-    toast("That conversation is cleared from the board", "🧹");
-  }, [write, toast]);
+    toast(t("That conversation is cleared from the board", "Percakapan itu sudah dibersihkan dari papan"), "🧹");
+  }, [write, toast, t]);
 
   const removeChat = useCallback(id => write(d => { d.chats = d.chats.filter(c => c.id !== id); }), [write]);
 
@@ -541,8 +550,9 @@ export function AppProvider({ children }) {
   const addDish = useCallback(dish => {
     write(d => { d.menu.push(dish); });
     setUi(u => ({ ...u, cat: "All", wishOnly: false, query: "" }));
-    toast(`${dish.name} is on the board - guests can order it now`, "🆕");
-  }, [write, toast]);
+    toast(t(`${dish.name} is on the board. Guests can order it now`,
+      `${dish.name_id || dish.name} sudah di papan. Tamu bisa langsung pesan`), "🆕");
+  }, [write, toast, t]);
 
   const patchDish = useCallback((id, patch) => {
     write(d => { const x = d.menu.find(m => m.id === id); if (x) Object.assign(x, patch); });
@@ -556,8 +566,10 @@ export function AppProvider({ children }) {
       x.available = x.available === false;
       name = x.name; on = x.available;
     });
-    if (name) toast(`${name} is ${on ? "back on the board" : "off the board"}`, on ? "✅" : "🚫");
-  }, [write, toast]);
+    if (name) toast(on
+      ? t(`${name} is back on the board`, `${name} sudah kembali ke papan`)
+      : t(`${name} is off the board`, `${name} sudah turun dari papan`), on ? "✅" : "🚫");
+  }, [write, toast, t]);
 
   const removeDish = useCallback(id => {
     write(d => {
@@ -600,8 +612,9 @@ export function AppProvider({ children }) {
     closeModal(); closeDrawer();
     setUi(u => ({ ...u, view: "guest", drawer: false, drawerOut: false, search: false }));
     window.scrollTo(0, 0);
-    toast("Guest site - looking only. Nothing you tap here changes an order.", "👀");
-  }, [toast, closeModal, closeDrawer]);
+    toast(t("Guest site. Looking only. Nothing you tap here changes an order.",
+      "Situs tamu. Sekadar melihat. Tidak ada yang kamu ketuk di sini mengubah pesanan."), "👀");
+  }, [toast, closeModal, closeDrawer, t]);
 
   const backToConsole = useCallback(() => {
     closeModal(); closeDrawer();
@@ -614,13 +627,18 @@ export function AppProvider({ children }) {
     goSection("menu");
   }, [goSection]);
 
-  const openBasket = useCallback(() => { if (asCustomer("Sign in to open your basket.")) openDrawer(); }, [asCustomer, openDrawer]);
+  const openBasket = useCallback(() => {
+    if (asCustomer(t("Sign in to open your basket.", "Masuk dulu untuk membuka keranjang."))) openDrawer();
+  }, [asCustomer, openDrawer, t]);
   const openWishlist = useCallback(() => {
-    if (!asCustomer("Sign in to keep a saved list - hearts are stored with your account.")) return;
+    if (!asCustomer(t("Sign in to keep a saved list. Hearts are stored with your account.",
+      "Masuk dulu untuk punya daftar simpanan. Favorit tersimpan di akunmu."))) return;
     showSavedOnly(!ui.wishOnly);
     goSection("menu");
-    toast(ui.wishOnly ? "Back to the whole board" : "Showing your saved dishes", "❤️");
-  }, [asCustomer, showSavedOnly, goSection, toast, ui.wishOnly]);
+    toast(ui.wishOnly
+      ? t("Back to the whole board", "Kembali ke papan lengkap")
+      : t("Showing your saved dishes", "Menampilkan hidangan favoritmu"), "❤️");
+  }, [asCustomer, showSavedOnly, goSection, toast, ui.wishOnly, t]);
 
   const toggleSearch = useCallback(on => {
     setUi(u => {
@@ -628,6 +646,18 @@ export function AppProvider({ children }) {
       return { ...u, search: want };
     });
   }, []);
+
+  /* a home-screen shortcut (#menu / #chat / #basket) opens its surface, once */
+  const deepLinked = useRef(false);
+  useEffect(() => {
+    if (deepLinked.current || ui.view !== "guest") return;
+    const to = decodeURIComponent(location.hash.slice(1));
+    if (!to) return;
+    deepLinked.current = true;
+    if (to === "chat") openChat();
+    else if (to === "basket") openBasket();
+    else if (document.getElementById(to)) goSection(to);
+  }, [ui.view, openChat, openBasket, goSection]);
 
   /* keyboard: Esc closes, "/" opens search */
   useEffect(() => {
@@ -651,14 +681,15 @@ export function AppProvider({ children }) {
   const value = {
     data, ui, toasts, modal, tracker,
     isStaff, signedIn, me, findAccount,
+    lang: data.lang === "id" ? "id" : "en", setLang, t,
     onSale, counts, results, cartList, cartCount, myOrders, dishById, totals,
     setUi, patchUi, write,
     toast, openModal, closeModal, openDrawer, closeDrawer, setTracker,
-    showAuth, leaveAuth, asCustomer, beginSession, endSession, createAccount, deleteAccount, updateMe, setTheme,
-    setQty, toggleWish, clearWish, showSavedOnly, resetFilters, setLang: (l) => patchUi({ lang: l }), t,
-    placeOrder, advanceOrder, setOrderStatus, emailOrder,
+    showAuth, leaveAuth, asCustomer, beginSession, endSession, createAccount, updateMe, setTheme,
+    setQty, toggleWish, clearWish, showSavedOnly, resetFilters,
+    placeOrder, advanceOrder, printOrder, receiveOrder,
     addReview, toggleReview, deleteReview,
-    chatThread, openChat, closeChat, askChat, toggleChatMode, chefReply, readChat, clearChat, removeChat,
+    chatId, chatThread, chatMode, openChat, closeChat, askChat, setChatMode, chefReply, readChat, clearChat, removeChat,
     addDish, patchDish, toggleDish, removeDish, resetDemo,
     goSection, jumpCat, openBasket, openWishlist, toggleSearch, previewSite, backToConsole
   };

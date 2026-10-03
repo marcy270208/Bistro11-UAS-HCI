@@ -105,6 +105,8 @@
 .cd-row__main{display:grid;gap:2px;min-width:0}
 .cd-row__main b{display:flex;align-items:center;gap:7px;font-size:.88rem;color:var(--ink)}
 .cd-row__main small{font-size:.75rem;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cd-row__main .cd-needs{justify-self:start;font-size:.58rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  padding:2px 7px;border-radius:var(--r-pill);background:var(--berry);color:var(--bg)}
 .cd-row__side{display:grid;justify-items:end;gap:5px}
 .cd-row__side time{font-size:.68rem;color:var(--ink-2)}
 .cd-row__side i{font-style:normal;min-width:19px;height:19px;padding:0 5px;border-radius:var(--r-pill);
@@ -119,7 +121,7 @@
 .cd-pane__head small{display:block;font-size:.73rem;color:var(--ink-2);margin-top:2px}
 .cd-pane__acts{margin-left:auto;display:flex;align-items:center;gap:8px}
 .cd-scroll{height:clamp(280px,46vh,470px);overflow-y:auto;padding:18px;
-  display:flex;flex-direction:column;gap:12px;scrollbar-width:thin}
+  display:flex;flex-direction:column;gap:12px}
 .cd-msg{display:flex;flex-direction:column;gap:4px;max-width:80%;align-self:flex-start}
 .cd-msg--you{align-self:flex-end;align-items:flex-end}
 .cd-who{display:flex;align-items:center;gap:8px;font-size:.63rem;font-weight:700;letter-spacing:.11em;
@@ -128,6 +130,8 @@
 .cd-bubble{padding:10px 14px;border-radius:4px 14px 14px 14px;font-size:.87rem;line-height:1.55;color:var(--ink);
   background:var(--surface-3);border:1px solid var(--line);white-space:pre-line}
 .cd-msg--bot .cd-bubble{background:transparent;border:1px dashed var(--line-2);color:var(--ink-2)}
+.cd-sys{align-self:center;max-width:80%;margin:0;padding:5px 14px;border-radius:var(--r-pill);text-align:center;
+  font-size:.72rem;line-height:1.5;color:var(--ink-2);background:var(--surface-2);border:1px dashed var(--line-2)}
 .cd-msg--you .cd-bubble{border-radius:14px 14px 4px 14px;background:var(--accent-soft);border-color:var(--accent)}
 .cd-foot{display:flex;gap:10px;align-items:center;padding:14px 16px;border-top:1px solid var(--line);
   background:var(--surface-2)}
