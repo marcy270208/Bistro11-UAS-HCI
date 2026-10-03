@@ -414,7 +414,7 @@ export function AppProvider({ children }) {
     if (activeOrders.length === 0) return;
     const timeouts = [];
     activeOrders.forEach(o => {
-      const delay = o.status === "delivering" ? 12000 : 3500;
+      const delay = o.status === "delivering" ? 12000 : 1200;
       timeouts.push(setTimeout(() => advanceOrder(o.id), delay));
     });
     return () => timeouts.forEach(clearTimeout);
