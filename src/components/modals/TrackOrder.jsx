@@ -201,10 +201,11 @@ export default function TrackOrder({ orderId }) {
                     onClick={() => { app.closeModal(); app.openModal(<ReviewForm />); }}>
               {t("Rate this order", "Beri ulasan pesanan ini")}
             </button>
-          ) : near ? (
+          ) : near && (
             <button className="btn btn--primary" onClick={() => app.receiveOrder(orderId)}>
               {t("Order received", "Pesanan sudah diterima")}
-            </button>}
+            </button>
+          )}
         </div>
       </div>
     </>
