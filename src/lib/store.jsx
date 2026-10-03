@@ -89,19 +89,27 @@ export function AppProvider({ children }) {
 
 
   // Sync from Supabase on first load
-  useEffect(() => {
-    supabase.from('app_data').select('data').eq('id', 'bistro').single().then(({ data: sbData, error }) => {
-      if (!error && sbData?.data) {
-        setData(prev => {
-          // Only overwrite if Supabase has newer data or just do a straight overwrite
-          // For simplicity, we merge the accounts and orders
-          const merged = { ...prev, ...sbData.data };
-          saveState(merged);
-          return merged;
-        });
-      }
-    });
-  }, []);
+    useEffect(() => {
+      supabase.from('app_data').select('data').eq('id', 'bistro').single().then(({ data: sbData, error }) => {
+        if (!error && sbData?.data) {
+          setData(prev => {
+            if (prev.lastUpdated && (!sbData.data.lastUpdated || prev.lastUpdated >= sbData.data.lastUpdated)) {
+              saveState(prev);
+              return prev;
+            }
+            const merged = { 
+              ...prev, 
+              ...sbData.data,
+              session: prev.session,
+              cart: prev.cart,
+              wish: prev.wish
+            };
+            saveState(merged);
+            return merged;
+          });
+        }
+      });
+    }, []);
 
   const patchUi = useCallback(p => setUi(u => ({ ...u, ...p })), []);
   
