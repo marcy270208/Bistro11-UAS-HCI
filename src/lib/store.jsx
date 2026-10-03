@@ -407,6 +407,19 @@ export function AppProvider({ children }) {
     if (o) toast(t(`${o.id} moved on`, `${o.id} sudah maju`), "🔔");
   }, [write, data.orders, toast, t]);
 
+  
+  // Global Demo Simulation
+  useEffect(() => {
+    const activeOrders = data.orders.filter(o => o.status !== "done" && o.status !== "cancelled");
+    if (activeOrders.length === 0) return;
+    const timeouts = [];
+    activeOrders.forEach(o => {
+      const delay = o.status === "delivering" ? 12000 : 3500;
+      timeouts.push(setTimeout(() => advanceOrder(o.id), delay));
+    });
+    return () => timeouts.forEach(clearTimeout);
+  }, [data.orders, advanceOrder]);
+
   const printOrder = useCallback(id => {
     write(d => { const o = d.orders.find(x => x.id === id); if (o) o.printed = true; });
     toast(t("Sent to the printer at the pass", "Tiketnya sudah keluar di printer dapur"), "🖨️");
