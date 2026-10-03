@@ -434,7 +434,7 @@ export function AppProvider({ children }) {
     clearTimeout(timers.current.chat);
     timers.current.chat = setTimeout(() => {
       const a = answer(t, data.menu);
-      setUi(u => ({ ...u, chatTyping: false }));
+      setUi(u => ({ ...u, chatTyping: false, ...(a.fallback ? { chatMode: "chef" } : {}) }));
       pushChat(VISITOR_THREAD, { from: "bot", text: a.text, chips: a.chips || [], dishes: a.dishes || [], go: a.go || "" });
     }, 700 + Math.min(900, t.length * 14));
   }, [pushChat, data.menu]);

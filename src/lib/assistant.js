@@ -103,10 +103,10 @@ export function answer(raw, menu) {
   }
 
   return {
-    text: `I did not catch that one. I am good on the menu, allergens, prices, delivery, payment and our hours - or leave the question here and ${STAFF.name} will answer it between services.`,
-    chips: CHAT_SUGGESTIONS.slice(0, 3),
-    dishes: [],
-    go: "menu"
+    text: `Maaf, saya kurang mengerti pertanyaan itu. Saya akan mengalihkan obrolan ini kepada ${STAFF.name} (Chef kami) agar beliau bisa menjawab Anda secara langsung!`,
+    fallback: true,
+    chips: [],
+    dishes: []
   };
 }
 
