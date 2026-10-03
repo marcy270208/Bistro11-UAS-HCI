@@ -8,6 +8,7 @@ import { DELIVERY_FEE, FREE_OVER, PICKUP_FEE, PROMOS, SEED_REVIEWS, SERVICE_RATE
 import { answer, opening } from "./assistant.js";
 import { defaults, emptyVault, loadState, saveState, threadKey } from "./storage.js";
 import { CAT_ID, LANGS, LOCALE, TAG_ID, makeT } from "./i18n.js";
+import { supabase } from "./supabase.js";
 import { syncThemeColor } from "./pwa.js";
 import { money, r0, setLocale, uid } from "./format.js";
 
