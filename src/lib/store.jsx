@@ -123,7 +123,7 @@ export function AppProvider({ children }) {
           if (prev.lastUpdated && (!sbData.data.lastUpdated || prev.lastUpdated >= sbData.data.lastUpdated)) {
             saveState(prev); return prev;
           }
-          const merged = { ...prev, ...sbData.data, session: prev.session, cart: prev.cart, wish: prev.wish };
+          const merged = { ...prev, ...sbData.data, session: prev.session, cart: prev.cart, wish: prev.wish, accounts: prev.accounts };
           saveState(merged); return merged;
         });
       }
