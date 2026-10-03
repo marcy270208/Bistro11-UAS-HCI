@@ -9,6 +9,7 @@ import { VISITOR_THREAD } from "../data/knowledge.js";
 import { answer, opening } from "./assistant.js";
 import { defaults, emptyVault, loadState, saveState } from "./storage.js";
 import { money, r0, uid } from "./format.js";
+import { t as i18n_t } from "./i18n.js";
 import { supabase } from "./supabase.js";
 
 const Ctx = createContext(null);
@@ -103,6 +104,8 @@ export function AppProvider({ children }) {
   }, []);
 
   const patchUi = useCallback(p => setUi(u => ({ ...u, ...p })), []);
+  
+  const t = useCallback((key, fallback) => i18n_t(ui.lang, key, fallback), [ui.lang]);
 
   /* every mutation gets a private copy, like the old imperative `S` */
   const write = useCallback(fn => setData(prev => { const next = structuredClone(prev); fn(next); return next; }), []);
@@ -605,7 +608,7 @@ export function AppProvider({ children }) {
     setUi, patchUi, write,
     toast, openModal, closeModal, openDrawer, closeDrawer, setTracker,
     showAuth, leaveAuth, asCustomer, beginSession, endSession, createAccount, deleteAccount, updateMe, setTheme,
-    setQty, toggleWish, clearWish, showSavedOnly, resetFilters, setLang: (l) => patchUi({ lang: l }),
+    setQty, toggleWish, clearWish, showSavedOnly, resetFilters, setLang: (l) => patchUi({ lang: l }), t,
     placeOrder, advanceOrder, setOrderStatus, emailOrder,
     addReview, toggleReview, deleteReview,
     chatThread, openChat, closeChat, askChat, toggleChatMode, chefReply, readChat, clearChat, removeChat,
